@@ -22,8 +22,8 @@ services:
 
   app:
     build:
-      context: ./be-rongsok
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: be-rongsok/Dockerfile
     container_name: rongsokin-api
     restart: always
     ports:

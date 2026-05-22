@@ -9,18 +9,18 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy package management files
-COPY package*.json ./
+COPY be-rongsok/package*.json ./
 
 # Install all dependencies (including devDependencies for client generation)
 RUN npm ci
 
 # Copy Prisma files and generate client
-COPY prisma ./prisma/
+COPY be-rongsok/prisma ./prisma/
 RUN npx prisma generate
 
 # Copy source code and documentation/assets
-COPY src ./src/
-COPY docs ./docs/
+COPY be-rongsok/src ./src/
+COPY be-rongsok/docs ./docs/
 
 # ==========================================
 # Production Runner Stage
@@ -40,7 +40,7 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/docs ./docs
 
 # Copy bootstrapper entrypoint
-COPY entrypoint.sh ./
+COPY be-rongsok/entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
 # Set environments
