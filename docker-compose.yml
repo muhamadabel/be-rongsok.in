@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: rongsokin-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-rongsok_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-rongsok_password}
+      POSTGRES_DB: ${DB_NAME:-rongsok_db}
+    volumes:
+      - rongsokin-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Double dollar signs $$ escape docker-compose parsing so they pass directly to container shell
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rongsok_user} -d $${POSTGRES_DB:-rongsok_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rongsokin-net
+
+  app:
+    build:
+      context: ./be-rongsok
+      dockerfile: Dockerfile
+    container_name: rongsokin-api
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000" # Secured: accessible only on the host machine (ideal for Cloudflare Tunnel)
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-rongsok_user}:${DB_PASSWORD:-rongsok_password}@db:5432/${DB_NAME:-rongsok_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-production-jwt-secret-key-change-this}
+      PORT: 3000
+      NODE_ENV: production
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rongsokin-net
+
+volumes:
+  rongsokin-db-data:
+
+networks:
+  rongsokin-net:
+    name: rongsokin-net
+    driver: bridge
