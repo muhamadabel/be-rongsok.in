@@ -5,7 +5,8 @@ const ratingSchema = z.object({
   orderId: z.string(),
   rateeId: z.string(),
   score: z.number().min(1).max(5),
-  reviewText: z.string().optional()
+  reviewText: z.string().optional(),
+  photoUrl: z.string().optional()
 });
 
 const submitRating = async (req, res, next) => {
@@ -19,7 +20,8 @@ const submitRating = async (req, res, next) => {
         raterId: req.user.id,
         rateeId: data.rateeId,
         score: data.score,
-        reviewText: data.reviewText
+        reviewText: data.reviewText,
+        photoUrl: data.photoUrl
       }
     });
 

@@ -6,7 +6,8 @@ const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(8),
-  role: z.enum(['CUSTOMER', 'COLLECTOR'])
+  role: z.enum(['CUSTOMER', 'COLLECTOR']),
+  avatarUrl: z.string().optional()
 });
 
 const loginSchema = z.object({
@@ -29,7 +30,8 @@ const register = async (req, res, next) => {
         name: data.name,
         email: data.email,
         passwordHash: hashedPassword,
-        role: data.role
+        role: data.role,
+        avatarUrl: data.avatarUrl
       }
     });
 
@@ -38,7 +40,7 @@ const register = async (req, res, next) => {
       status: 'success',
       data: {
         access_token: token,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl }
       }
     });
   } catch (error) {
@@ -63,7 +65,7 @@ const login = async (req, res, next) => {
       status: 'success',
       data: {
         access_token: token,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role }
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl }
       }
     });
   } catch (error) {
@@ -78,7 +80,7 @@ const me = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, name: true, email: true, role: true, avgRating: true }
+      select: { id: true, name: true, email: true, role: true, avgRating: true, avatarUrl: true }
     });
     res.status(200).json({ status: 'success', data: user });
   } catch (error) {

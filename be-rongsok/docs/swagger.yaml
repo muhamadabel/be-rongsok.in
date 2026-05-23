@@ -30,6 +30,9 @@ components:
         role:
           type: string
           enum: [CUSTOMER, COLLECTOR]
+        avatarUrl:
+          type: string
+          format: uri
     AuthLoginRequest:
       type: object
       required: [email, password]
@@ -60,6 +63,9 @@ components:
         avgRating:
           type: number
           format: float
+        avatarUrl:
+          type: string
+          format: uri
     CollectorProfile:
       type: object
       properties:
@@ -69,6 +75,9 @@ components:
           type: string
         description:
           type: string
+        shopImageUrl:
+          type: string
+          format: uri
         radiusKm:
           type: number
         isOpen:
@@ -158,6 +167,12 @@ components:
           type: number
         totalPrice:
           type: number
+        photoUrl:
+          type: string
+          format: uri
+        transactionProofUrl:
+          type: string
+          format: uri
         createdAt:
           type: string
           format: date-time
@@ -177,6 +192,9 @@ components:
           maximum: 5
         reviewText:
           type: string
+        photoUrl:
+          type: string
+          format: uri
 paths:
   /auth/register:
     post:
@@ -377,6 +395,9 @@ paths:
                   type: number
                 agreedPrice:
                   type: number
+                transactionProofUrl:
+                  type: string
+                  format: uri
       responses:
         '200':
           description: Order updated

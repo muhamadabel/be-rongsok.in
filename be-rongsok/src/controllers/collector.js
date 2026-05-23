@@ -5,7 +5,8 @@ const profileSchema = z.object({
   shopName: z.string().min(3),
   description: z.string().optional(),
   radiusKm: z.number().min(1).max(50),
-  isOpen: z.boolean().optional()
+  isOpen: z.boolean().optional(),
+  shopImageUrl: z.string().optional()
 });
 
 const catalogSchema = z.array(z.object({

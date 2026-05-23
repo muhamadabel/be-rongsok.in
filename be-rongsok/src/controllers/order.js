@@ -92,6 +92,7 @@ const updateStatus = async (req, res, next) => {
       
       case 'validate': // Collector submits actual weight
         if (order.status !== 'CONFIRMED' && order.status !== 'IN_PROGRESS') return res.status(400).json({ message: 'Invalid state' });
+        const { transactionProofUrl } = req.body;
         newStatus = 'AWAITING_CONFIRMATION';
         await prisma.order.update({
           where: { id },
@@ -99,7 +100,8 @@ const updateStatus = async (req, res, next) => {
             status: newStatus, 
             actualWeight: parseFloat(actualWeight), 
             agreedPrice: parseFloat(agreedPrice),
-            totalPrice: parseFloat(actualWeight) * parseFloat(agreedPrice)
+            totalPrice: parseFloat(actualWeight) * parseFloat(agreedPrice),
+            transactionProofUrl: transactionProofUrl || null
           }
         });
         break;
@@ -107,7 +109,7 @@ const updateStatus = async (req, res, next) => {
       case 'confirm': // Customer accepts price
         if (order.status !== 'AWAITING_CONFIRMATION') return res.status(400).json({ message: 'Invalid state' });
         newStatus = 'COMPLETED';
-        await prisma.order.update({
+        const updatedOrder = await prisma.order.update({
           where: { id },
           data: { status: newStatus }
         });
@@ -118,7 +120,8 @@ const updateStatus = async (req, res, next) => {
             detailsJson: {
               customer: order.customerId,
               collector: order.collectorId,
-              total: parseFloat(actualWeight) * parseFloat(agreedPrice)
+              total: parseFloat(actualWeight || order.actualWeight) * parseFloat(agreedPrice || order.agreedPrice),
+              transactionProofUrl: updatedOrder.transactionProofUrl
             }
           }
         });

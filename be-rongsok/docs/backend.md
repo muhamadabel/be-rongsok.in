@@ -14,6 +14,7 @@ model User {
   password      String
   name          String
   role          Role      @default(CUSTOMER)
+  avatarUrl     String?
   location      Unsupported("geography(Point, 4326)")?
   avg_rating    Float     @default(0)
   createdAt     DateTime  @default(now())
@@ -31,6 +32,7 @@ model Order {
   status          OrderStatus @default(PENDING)
   method          OrderMethod
   photoUrl        String
+  transactionProofUrl String?
   estWeight       Float
   actualWeight    Float?
   totalPrice      Float?
@@ -57,13 +59,13 @@ enum OrderStatus {
 ### Base URL: `/api/v1`
 
 #### Auth Module
-- `POST /auth/register`: Nama, Email, Password, Role.
-- `POST /auth/login`: Email, Password. Return: `access_token` (JWT).
-- `GET /auth/me`: Get current user info from JWT.
+- `POST /auth/register`: Nama, Email, Password, Role, `avatarUrl` (opsional).
+- `POST /auth/login`: Email, Password. Return: `access_token` (JWT), `user` info.
+- `GET /auth/me`: Get current user info from JWT (includes `avatarUrl`).
 
 #### Profile Module (Collector)
-- `POST /collector/profile`: Setup nama lapak, radius_km, kategori sampah.
-- `PATCH /collector/profile`: Update status buka/tutup atau harga.
+- `POST /collector/profile`: Setup nama lapak, radius_km, kategori sampah, `shopImageUrl` (opsional).
+- `PATCH /collector/profile`: Update status buka/tutup, harga, `shopImageUrl` (opsional).
 
 #### Discovery Module
 - `GET /discovery/search`: 
@@ -72,11 +74,11 @@ enum OrderStatus {
   - Return: List Pengepul terdekat yang aktif.
 
 #### Order Module (OMS)
-- `POST /orders`: Buat pesanan baru (Customer).
+- `POST /orders`: Buat pesanan baru (Customer, dengan `photoUrl` opsional).
 - `GET /orders/:id`: Detail pesanan.
 - `PATCH /orders/:id/accept`: Pengepul mengambil pesanan `PENDING`.
-- `PATCH /orders/:id/validate`: Pengepul input berat aktual & harga final.
-- `PATCH /orders/:id/confirm`: Customer setuju harga (Status -> `COMPLETED`).
+- `PATCH /orders/:id/validate`: Pengepul input berat aktual, harga final, `transactionProofUrl` (opsional).
+- `PATCH /orders/:id/confirm`: Customer setuju harga (Status -> `COMPLETED`, generate `Receipt` dengan `transactionProofUrl`).
 
 ---
 
