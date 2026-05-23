@@ -1,0 +1,54 @@
+flowchart LR
+    %% Styling
+    classDef actorStyle fill:#eff6ff,stroke:#1d4ed8,stroke-width:2px;
+    classDef usecaseStyle fill:#fff,stroke:#374151,stroke-width:1.5px,rx:20,ry:20;
+    classDef systemStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,stroke-dasharray: 5 5;
+
+    %% Actors
+    subgraph Aktor [👤 Aktor Sistem]
+        C[👤 Customer]:::actorStyle
+        P[🏪 Pengepul]:::actorStyle
+        A[⚙️ Admin]:::actorStyle
+    end
+
+    %% System Boundary
+    subgraph Rongsok.in [Platform Rongsok.in]
+        %% Customer Use Cases
+        UC1(["UC-01: Registrasi Akun (Customer/Pengepul)"]):::usecaseStyle
+        UC2(["UC-02: Kelola Profil & Avatar Profil"]):::usecaseStyle
+        UC3(["UC-03: Cari Pengepul Terdekat (Spasial)"]):::usecaseStyle
+        UC4(["UC-04: Buat Pesanan (Jemput/Antar) & Foto Sampah"]):::usecaseStyle
+        UC5(["UC-05: Konfirmasi Pesanan Selesai"]):::usecaseStyle
+        UC6(["UC-06: Berikan Rating & Foto Ulasan"]):::usecaseStyle
+
+        %% Collector Use Cases
+        UC7(["UC-07: Lengkapi Profil Lapak & Foto Lapak"]):::usecaseStyle
+        UC8(["UC-08: Atur Katalog Harga & Kategori Sampah"]):::usecaseStyle
+        UC9(["UC-09: Terima/Tolak Order (Real-time Socket.IO)"]):::usecaseStyle
+        UC10(["UC-10: Input Berat Aktual & Bukti Foto Timbangan"]):::usecaseStyle
+        UC11(["UC-11: Berikan Rating Kualitas Sampah"]):::usecaseStyle
+
+        %% Admin Use Cases
+        UC12(["UC-12: Kelola Data Master Kategori Sampah"]):::usecaseStyle
+        UC13(["UC-13: Monitoring Riwayat Seluruh Transaksi"]):::usecaseStyle
+    end
+
+    %% Customer Connections
+    C --> UC1
+    C --> UC2
+    C --> UC3
+    C --> UC4
+    C --> UC5
+    C --> UC6
+
+    %% Collector Connections
+    P --> UC1
+    P --> UC7
+    P --> UC8
+    P --> UC9
+    P --> UC10
+    P --> UC11
+
+    %% Admin Connections
+    A --> UC12
+    A --> UC13

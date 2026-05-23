@@ -1,0 +1,55 @@
+flowchart TD
+    %% Swimlane Styles
+    classDef startEnd fill:#1d4ed8,color:#fff,stroke:#1e3a8a,stroke-width:2px;
+    classDef decision fill:#f59e0b,color:#fff,stroke:#b45309,stroke-width:2px;
+    classDef action fill:#fff,stroke:#374151,stroke-width:1.5px;
+
+    subgraph Customer [👤 AKTIVITAS CUSTOMER]
+        Start([Mulai]):::startEnd --> A1[Buka Halaman Pesanan & Input Estimasi Berat]:::action
+        A1 --> A2[Upload Foto Sampah & Pilih Metode Jemput/Antar]:::action
+        A2 --> A3[Izinkan Akses GPS / Geolocation]:::action
+        A3 --> A4[Submit Form Pesanan]:::action
+    end
+
+    subgraph System [🖥️ SISTEM & BACKEND RONGSOK.IN]
+        A4 --> S1[Upload File Foto Sampah ke Cloudinary]:::action
+        S1 --> S2[Menerima Request & Autentikasi Token JWT]:::action
+        S2 --> S3[Eksekusi Spatial Query PostGIS ST_DWithin]:::action
+        S3 --> S4{Pengepul Aktif\nDalam Radius?}:::decision
+        S4 -- Tidak --> S5[Tampilkan Notifikasi 'Pengepul Sibuk/Tidak Ada']:::action
+        S4 -- Ya --> S6[Simpan Record Order: Status PENDING]:::action
+        S6 --> S7[Broadcast Pesanan ke Room Socket.IO Pengepul]:::action
+    end
+
+    subgraph Collector [🏪 AKTIVITAS PENGEPUL]
+        S7 --> P1[Terima Notifikasi Pesanan Real-time]:::action
+        P1 --> P2{Terima\nOrderan?}:::decision
+        P2 -- Tidak --> P3[Abaikan / Tolak]:::action
+        P2 -- Ya --> P4[Status Order: CONFIRMED. Pengepul Menuju Lokasi]:::action
+        P4 --> P5[Lakukan Penimbangan Sampah di Lokasi]:::action
+        P5 --> P6[Input Berat Aktual & Upload Foto Bukti Timbangan/Nota]:::action
+        P6 --> P7[Kirim Data Hasil Timbangan & Harga Final]:::action
+    end
+
+    subgraph System_2 [🖥️ SISTEM & BACKEND RONGSOK.IN]
+        P7 --> S8[Ubah Status Order: AWAITING_CONFIRMATION]:::action
+        S8 --> S9[Kirim Detail Rincian Nota Digital ke Customer]:::action
+    end
+
+    subgraph Customer_2 [👤 AKTIVITAS CUSTOMER]
+        S9 --> A5{Setuju Dengan\nHasil Timbangan?}:::decision
+        A5 -- Tidak --> A6[Lakukan Negosiasi Manual dengan Pengepul]:::action
+        A6 --> P5
+        A5 -- Ya --> A7[Konfirmasi Harga Selesai & Bayar]:::action
+    end
+
+    subgraph System_3 [🖥️ SISTEM & BACKEND RONGSOK.IN]
+        A7 --> S10[Ubah Status Order: COMPLETED]:::action
+        S10 --> S11[Buat Record Receipt & Kunci Data Transaksi]:::action
+        S11 --> S12[Kirim Struk Digital & Trigger Layar Rating]:::action
+    end
+
+    subgraph Completion [FASE REVIEW]
+        S12 --> R1[Customer & Pengepul Saling Mengisi Rating & Ulasan]:::action
+        R1 --> End([Selesai]):::startEnd
+    end

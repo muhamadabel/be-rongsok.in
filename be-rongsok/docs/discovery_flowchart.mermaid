@@ -1,0 +1,30 @@
+flowchart TD
+    %% Styles
+    classDef startEnd fill:#1d4ed8,color:#fff,stroke:#1e3a8a,stroke-width:2px;
+    classDef decision fill:#f59e0b,color:#fff,stroke:#b45309,stroke-width:2px;
+    classDef io fill:#e0f2fe,stroke:#0369a1,stroke-width:1.5px;
+    classDef action fill:#fff,stroke:#374151,stroke-width:1.5px;
+
+    Start([Mulai: Request Discovery Pengepul]):::startEnd --> In1[/Menerima Query Parameter: lat, lng, categoryId, radius/]:::io
+    In1 --> Dec1{Validasi Payload:\nApakah lat, lng, categoryId Ada?}:::decision
+    
+    Dec1 -- Tidak --> OutErr[/Kembalikan HTTP 422 / 400:\nValidation Failed / Bad Request/]:::io
+    OutErr --> End([Selesai]):::startEnd
+    
+    Dec1 -- Ya --> Proc1[Ubah Koordinat GPS Menjadi Geography Point WGS84\nST_SetSRID ST_MakePoint lng, lat, 4326]:::action
+    Proc1 --> Proc2[Eksekusi Query Spasial PostGIS dengan $queryRaw Prisma]:::action
+    
+    subgraph Database [Database PostgreSQL + PostGIS]
+        Proc2 --> DB1[Kalkulasi Geospasial dengan ST_Distance]:::action
+        DB1 --> DB2[Filter Radius Geospasial dengan ST_DWithin]:::action
+        DB2 --> DB3[Filter Lapak: cp.isOpen = true & Katalog Aktif]:::action
+    end
+    
+    DB3 --> Dec2{Apakah Hasil Query\nMenghasilkan Baris Data?}:::decision
+    
+    Dec2 -- Tidak --> Out404[/Kembalikan HTTP 404:\nTidak Ada Pengepul Aktif di Sekitar/]:::io
+    Out404 --> End
+    
+    Dec2 -- Ya --> Proc3[Lakukan Sorting Hasil:\n1. Prioritas Premium DESC\n2. Jarak Terdekat ASC\n3. Rating Pengepul DESC]:::action
+    Proc3 --> Out200[/Kembalikan HTTP 200:\nJSON List Pengepul Terdekat beserta Jarak & Harga/]:::io
+    Out200 --> End
