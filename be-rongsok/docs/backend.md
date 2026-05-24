@@ -1,5 +1,5 @@
 # Backend Implementation Guide — Rongsok.in
-**Tech Stack:** Express.js, Prisma ORM, Supabase (PostgreSQL + PostGIS), Socket.IO, JWT. Hosted on Render (Free Tier).
+**Tech Stack:** Express.js, Prisma ORM, Supabase (PostgreSQL + PostGIS), Socket.IO, JWT. Hosted on Home Lab Server (Pop!_OS 24.04, Docker Swarm, CapRover PaaS, Cloudflare Tunnels).
 
 ---
 

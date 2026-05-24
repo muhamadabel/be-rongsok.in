@@ -36,7 +36,7 @@ Proyek dibagi menjadi 2 Sprint (masing-masing 10 hari).
 | **13-14** | [ ] Validasi flow "Accept/Reject" & Timeout 15 menit. | [ ] API Order Management: State Machine (Pending -> Confirmed). | [ ] UI Tracking: Real-time update status pesanan (Socket.IO client). |
 | **15-16** | [ ] Simulasi penimbangan (Weight Validation) & Harga Final. | [ ] API Validasi: Input berat aktual & Auto-generate Receipt. | [ ] UI Validation: Form Input Pengepul & Konfirmasi Customer. |
 | **17-18** | [ ] Quality Control: Cek konsistensi data & performa UI. | [ ] API Mutual Rating & Update Rating Average di Profil. | [ ] UI Rating: Pop-up Star Rating & Histori Transaksi. |
-| **19** | [ ] Final UAT & Persiapan Pitch Deck / Video Demo. | [ ] Deployment (Render Free) & Final Debugging. | [ ] Deployment (Vercel) & Polish UI (Animations/Micro-interactions). |
+| **19** | [ ] Final UAT & Persiapan Pitch Deck / Video Demo. | [ ] Deployment (CapRover + Cloudflare) & Final Debugging. | [ ] Deployment (Vercel) & Polish UI (Animations/Micro-interactions). |
 | **20** | [ ] **Release MVP:** Penyerahan dokumen & Demo siap tampil. | [ ] Monitoring Server & Backup Database. | [ ] Final Check Responsivitas Mobile. |
 
 ---

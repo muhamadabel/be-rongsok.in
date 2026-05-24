@@ -47,7 +47,7 @@ Rongsok.in adalah platform mobile-first berbasis web yang mengintegrasikan geolo
 | Real-time | Socket.IO | Notifikasi pesanan real-time ke Pengepul |
 | Storage | Cloudinary | Upload dan serving foto sampah dari Customer (Free Tier) |
 | Auth | JWT (jsonwebtoken) + bcrypt | Token-based auth stateless untuk integrasi Next.js SPA |
-| Deployment | Vercel (FE) + Render (BE) | Platform-as-a-Service, 100% Free Tier untuk keperluan lomba |
+| Deployment | Vercel (FE) + Home Lab Server (BE) | Managed via Docker Swarm & CapRover, routed through Cloudflare Tunnels |
 
 > **Catatan Stack:** Full JavaScript end-to-end (Next.js + Express.js). Tidak ada PHP/Laravel. Prisma menggantikan Eloquent sebagai ORM dengan developer experience yang lebih modern.
 
