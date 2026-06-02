@@ -110,6 +110,8 @@ components:
           type: string
         name:
           type: string
+        description:
+          type: string
         iconUrl:
           type: string
           format: uri
@@ -126,12 +128,14 @@ components:
           type: string
     OrderCreateRequest:
       type: object
-      required: [categoryId, estimatedWeight, photoUrl, lat, lng, method]
+      required: [lat, lng, method]
       properties:
         categoryId:
           type: string
         estimatedWeight:
           type: number
+        notes:
+          type: string
         photoUrl:
           type: string
           format: uri
@@ -142,6 +146,41 @@ components:
         method:
           type: string
           enum: [PICKUP, DROPOFF]
+        collectorId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemCreate'
+    OrderItemCreate:
+      type: object
+      required: [categoryId, estimatedWeight]
+      properties:
+        categoryId:
+          type: string
+        estimatedWeight:
+          type: number
+        notes:
+          type: string
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        categoryId:
+          type: string
+        category:
+          $ref: '#/components/schemas/WasteCategory'
+        estimatedWeight:
+          type: number
+        actualWeight:
+          type: number
+        agreedPrice:
+          type: number
+        notes:
+          type: string
     Order:
       type: object
       properties:
@@ -176,6 +215,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
     RatingCreateRequest:
       type: object
       required: [orderId, raterId, rateeId, score]
@@ -398,6 +441,18 @@ paths:
                 transactionProofUrl:
                   type: string
                   format: uri
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, actualWeight, agreedPrice]
+                    properties:
+                      id:
+                        type: string
+                      actualWeight:
+                        type: number
+                      agreedPrice:
+                        type: number
       responses:
         '200':
           description: Order updated

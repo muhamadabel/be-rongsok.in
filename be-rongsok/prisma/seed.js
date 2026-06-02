@@ -15,9 +15,27 @@ async function main() {
 
   // Waste Categories
   const categories = await Promise.all([
-    prisma.wasteCategory.create({ data: { name: 'Kardus', iconUrl: 'https://example.com/icons/kardus.png' } }),
-    prisma.wasteCategory.create({ data: { name: 'Plastik', iconUrl: 'https://example.com/icons/plastik.png' } }),
-    prisma.wasteCategory.create({ data: { name: 'Kertas', iconUrl: 'https://example.com/icons/kertas.png' } })
+    prisma.wasteCategory.create({ 
+      data: { 
+        name: 'Kardus', 
+        description: 'Karton tebal kemasan, box bekas, pastikan dalam kondisi kering', 
+        iconUrl: 'https://example.com/icons/kardus.png' 
+      } 
+    }),
+    prisma.wasteCategory.create({ 
+      data: { 
+        name: 'Plastik', 
+        description: 'Botol PET transparan, gelas plastik bersih, pisahkan dari tutupnya', 
+        iconUrl: 'https://example.com/icons/plastik.png' 
+      } 
+    }),
+    prisma.wasteCategory.create({ 
+      data: { 
+        name: 'Kertas', 
+        description: 'Kertas HVS bekas, koran, buku tanpa jilid lem tebal', 
+        iconUrl: 'https://example.com/icons/kertas.png' 
+      } 
+    })
   ]);
 
   // Users
@@ -29,50 +47,6 @@ async function main() {
       role: 'ADMIN',
     }
   });
-
-  const collector = await prisma.user.create({
-    data: {
-      name: 'Pak Budi',
-      email: 'budi@collector.com',
-      passwordHash: await bcryptHash('collector123'),
-      role: 'COLLECTOR'
-    }
-  });
-
-  const customer = await prisma.user.create({
-    data: {
-      name: 'Rizky',
-      email: 'rizky@example.com',
-      passwordHash: await bcryptHash('customer123'),
-      role: 'CUSTOMER'
-    }
-  });
-
-  // Collector Profile
-  const profile = await prisma.collectorProfile.create({
-    data: {
-      userId: collector.id,
-      shopName: 'Lapak Budi',
-      description: 'Pengepul terpercaya di Yogyakarta',
-      radiusKm: 5,
-      isOpen: true,
-      isPremium: true,
-      priorityScore: 10
-    }
-  });
-
-  // Catalogs for collector
-  await Promise.all(categories.map(cat =>
-    prisma.collectorCatalog.create({
-      data: {
-        collectorId: profile.id,
-        categoryId: cat.id,
-        minPrice: 3000,
-        maxPrice: 6000,
-        isActive: true
-      }
-    })
-  ));
 
   console.log('Seed data created successfully');
 }

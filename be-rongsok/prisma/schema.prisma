@@ -61,51 +61,67 @@ generator client {
    isOpen      Boolean  @default(true)
    isPremium   Boolean  @default(false)
    priorityScore Int    @default(0)
+   maxConcurrentOrders Int @default(5)
    catalogs    CollectorCatalog[]
  }
 
  model WasteCategory {
-   id   String @id @default(uuid())
-   name String @unique
-   iconUrl String?
-   collectorCatalogs CollectorCatalog[]
-   orders            Order[]
- }
+    id   String @id @default(uuid())
+    name String @unique
+    description String?
+    iconUrl String?
+    collectorCatalogs CollectorCatalog[]
+    orders            Order[]
+    orderItems        OrderItem[]
+  }
 
- model CollectorCatalog {
-   id            String   @id @default(uuid())
-   collector     CollectorProfile @relation(fields: [collectorId], references: [id])
-   collectorId    String
-   category      WasteCategory @relation(fields: [categoryId], references: [id])
-   categoryId    String
-   minPrice      Float
-   maxPrice      Float
-   isActive      Boolean @default(true)
- }
+  model CollectorCatalog {
+    id            String   @id @default(uuid())
+    collector     CollectorProfile @relation(fields: [collectorId], references: [id])
+    collectorId    String
+    category      WasteCategory @relation(fields: [categoryId], references: [id])
+    categoryId    String
+    minPrice      Float
+    maxPrice      Float
+    isActive      Boolean @default(true)
+  }
 
- model Order {
-   id                String   @id @default(uuid())
-   customer          User      @relation("CustomerOrders", fields: [customerId], references: [id])
-   customerId        String
-   collector         User?     @relation("CollectorOrders", fields: [collectorId], references: [id])
-   collectorId       String?
-   category          WasteCategory @relation(fields: [categoryId], references: [id])
-   categoryId        String
-   method            OrderMethod
-   photoUrl          String?
-   transactionProofUrl String?
-   estimatedWeight   Float
-   actualWeight      Float?
-   agreedPrice       Float?
-   totalPrice        Float?
-   status            OrderStatus @default(PENDING)
-   createdAt         DateTime @default(now())
-   updatedAt         DateTime @updatedAt
-   // map to collector candidates
-   orderCollectors   OrderCollector[]
-   ratings           Rating[]
-   receipt           Receipt?
- }
+  model Order {
+    id                String   @id @default(uuid())
+    customer          User      @relation("CustomerOrders", fields: [customerId], references: [id])
+    customerId        String
+    collector         User?     @relation("CollectorOrders", fields: [collectorId], references: [id])
+    collectorId       String?
+    category          WasteCategory? @relation(fields: [categoryId], references: [id])
+    categoryId        String?
+    method            OrderMethod
+    photoUrl          String?
+    transactionProofUrl String?
+    estimatedWeight   Float?
+    actualWeight      Float?
+    agreedPrice       Float?
+    totalPrice        Float?
+    status            OrderStatus @default(PENDING)
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+    // map to collector candidates
+    orderCollectors   OrderCollector[]
+    ratings           Rating[]
+    receipt           Receipt?
+    items             OrderItem[]
+  }
+
+  model OrderItem {
+    id              String        @id @default(uuid())
+    order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    orderId         String
+    category        WasteCategory @relation(fields: [categoryId], references: [id])
+    categoryId      String
+    estimatedWeight Float
+    actualWeight    Float?
+    agreedPrice     Float?
+    notes           String?
+  }
 
  model OrderCollector {
    id          String @id @default(uuid())
