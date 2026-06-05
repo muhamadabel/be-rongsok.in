@@ -110,7 +110,10 @@ const getOrders = async (req, res, next) => {
 const categorySchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  iconUrl: z.string().optional()
+  iconUrl: z.string().optional(),
+  parentId: z.string().nullable().optional(),       // null/undefined = kategori induk
+  unit: z.enum(['kg', 'liter', 'pcs']).optional(),
+  sortOrder: z.number().int().optional()
 });
 
 const createCategory = async (req, res, next) => {
@@ -150,11 +153,18 @@ const updateCategory = async (req, res, next) => {
 
 const deleteCategory = async (req, res, next) => {
   try {
-    // Cek apakah masih dipakai katalog pengepul / order item
-    const [inCatalog, inItem] = await Promise.all([
+    // Cek apakah masih dipakai katalog / order item, atau punya sub-item (anak)
+    const [inCatalog, inItem, hasChildren] = await Promise.all([
       prisma.collectorCatalog.findFirst({ where: { categoryId: req.params.id } }),
-      prisma.orderItem.findFirst({ where: { categoryId: req.params.id } })
+      prisma.orderItem.findFirst({ where: { categoryId: req.params.id } }),
+      prisma.wasteCategory.findFirst({ where: { parentId: req.params.id } })
     ]);
+    if (hasChildren) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Kategori utama masih punya sub-item. Hapus sub-item dulu.'
+      });
+    }
     if (inCatalog || inItem) {
       return res.status(400).json({
         status: 'error',

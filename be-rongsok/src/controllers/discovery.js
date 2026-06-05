@@ -9,9 +9,12 @@ const search = async (req, res, next) => {
       return res.status(400).json({ status: 'error', message: 'lat and lng are required' });
     }
 
-    // categoryId opsional — kalau ada, filter pengepul yang punya katalog aktif kategori itu
+    // categoryId opsional. Bisa berupa kategori UTAMA (induk) atau item (anak).
+    // Kalau induk, cocokkan kalau pengepul punya katalog aktif untuk SALAH SATU anaknya.
     const categoryFilter = categoryId
-      ? Prisma.sql`AND cc."categoryId" = ${categoryId} AND cc."isActive" = true`
+      ? Prisma.sql`AND cc."isActive" = true AND cc."categoryId" IN (
+          SELECT id FROM "WasteCategory" WHERE id = ${categoryId} OR "parentId" = ${categoryId}
+        )`
       : Prisma.sql``;
 
     const collectors = await prisma.$queryRaw`
@@ -43,7 +46,10 @@ const search = async (req, res, next) => {
 
 const getCategories = async (req, res, next) => {
   try {
-    const categories = await prisma.wasteCategory.findMany();
+    // Return flat list (sudah termasuk parentId, unit, sortOrder) — FE bangun tree-nya.
+    const categories = await prisma.wasteCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
     res.status(200).json({ status: 'success', data: categories });
   } catch (error) {
     next(error);

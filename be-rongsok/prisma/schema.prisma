@@ -71,6 +71,12 @@ generator client {
     name String @unique
     description String?
     iconUrl String?
+    unit String @default("kg")        // satuan: kg | liter | pcs
+    sortOrder Int @default(0)
+    // Hierarki: parentId null = kategori utama (induk); terisi = sub-item
+    parentId String?
+    parent   WasteCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+    children WasteCategory[] @relation("CategoryHierarchy")
     collectorCatalogs CollectorCatalog[]
     orders            Order[]
     orderItems        OrderItem[]
