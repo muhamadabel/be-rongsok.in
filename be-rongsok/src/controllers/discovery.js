@@ -22,6 +22,7 @@ const search = async (req, res, next) => {
         cp."priorityScore",
         cp."isPremium",
         u.name as "ownerName",
+        u."avgRating",
         ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography) as distance
       FROM "CollectorProfile" cp
       JOIN "User" u ON cp."userId" = u.id
@@ -70,4 +71,31 @@ const getCollectorById = async (req, res, next) => {
   }
 };
 
-module.exports = { search, getCategories, getCollectorById };
+// GET /discovery/stats — statistik publik untuk landing page (tanpa auth)
+const getStats = async (req, res, next) => {
+  try {
+    const [totalTransactions, totalCollectors, totalCustomers, totalCategories, weightAgg] =
+      await Promise.all([
+        prisma.order.count({ where: { status: 'COMPLETED' } }),
+        prisma.collectorProfile.count(),
+        prisma.user.count({ where: { role: 'CUSTOMER' } }),
+        prisma.wasteCategory.count(),
+        prisma.order.aggregate({ where: { status: 'COMPLETED' }, _sum: { actualWeight: true } })
+      ]);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        totalTransactions,
+        totalCollectors,
+        totalCustomers,
+        totalCategories,
+        totalWeightKg: Number(weightAgg._sum.actualWeight || 0)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { search, getCategories, getCollectorById, getStats };
