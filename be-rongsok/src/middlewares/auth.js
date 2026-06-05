@@ -16,12 +16,16 @@ const protect = (req, res, next) => {
   }
 };
 
+// Role guard — JWT sekarang sudah include role (lihat utils/auth.generateToken)
 const authorize = (...roles) => {
   return (req, res, next) => {
-    // Note: req.user only contains id. We need to fetch user from DB or add role to JWT.
-    // For simplicity, let's assume we fetch it or it's added to JWT.
-    // Let's modify generateToken to include role.
-    next(); // Placeholder - will refine later if needed
+    if (!req.user || !req.user.role || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        status: 'error',
+        message: `Forbidden — butuh role: ${roles.join(', ')}`
+      });
+    }
+    next();
   };
 };
 

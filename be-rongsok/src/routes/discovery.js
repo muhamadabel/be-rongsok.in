@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { search, getCategories } = require('../controllers/discovery');
-const { protect } = require('../middlewares/auth');
+const { search, getCategories, getCollectorById } = require('../controllers/discovery');
 
-router.get('/search', protect, search);
+// Semua publik — landing page & pencarian bisa diakses tanpa login
+router.get('/search', search);
 router.get('/categories', getCategories);
+router.get('/collectors/:id', getCollectorById);
 
 module.exports = router;

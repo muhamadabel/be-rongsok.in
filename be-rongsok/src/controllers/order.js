@@ -269,6 +269,27 @@ const updateStatus = async (req, res, next) => {
         });
         break;
 
+      case 'reject': // Collector menolak — order tetap PENDING, hilang dari antrean collector ini
+        await prisma.orderCollector.updateMany({
+          where: { orderId: id, collectorId: req.user.id },
+          data: { status: 'rejected' }
+        });
+        return res.status(200).json({
+          status: 'success',
+          data: { orderId: id, status: order.status, rejected: true }
+        });
+
+      case 'cancel': // Customer (atau collector terkait) membatalkan order
+        if (!['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(order.status)) {
+          return res.status(400).json({ status: 'error', message: 'Pesanan tidak bisa dibatalkan pada status ini' });
+        }
+        if (order.customerId !== req.user.id && order.collectorId !== req.user.id) {
+          return res.status(403).json({ status: 'error', message: 'Anda tidak berhak membatalkan pesanan ini' });
+        }
+        newStatus = 'CANCELLED';
+        await prisma.order.update({ where: { id }, data: { status: newStatus } });
+        break;
+
       default:
         return res.status(400).json({ message: 'Invalid action' });
     }
@@ -282,13 +303,51 @@ const updateStatus = async (req, res, next) => {
   }
 };
 
+// GET /orders — list order milik user. Filter: status, role (customer|collector), limit.
+const getOrders = async (req, res, next) => {
+  try {
+    const { status, role, limit = 10 } = req.query;
+
+    const where = {};
+    if (status) where.status = status;
+    if (role === 'collector') {
+      where.collectorId = req.user.id;
+    } else {
+      where.customerId = req.user.id;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        customer: { select: { id: true, name: true, email: true, phone: true, avatarUrl: true } },
+        collector: {
+          select: {
+            id: true, name: true, email: true, phone: true, avatarUrl: true,
+            collectorProfile: { select: { shopName: true } }
+          }
+        },
+        category: true,
+        items: { include: { category: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Number(limit) || 10
+    });
+
+    res.status(200).json({ status: 'success', data: orders });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getOrderDetails = async (req, res, next) => {
   try {
     const order = await prisma.order.findUnique({
       where: { id: req.params.id },
-      include: { 
-        customer: true, 
-        collector: true, 
+      include: {
+        customer: true,
+        collector: {
+          include: { collectorProfile: true }
+        },
         category: true,
         items: {
           include: { category: true }
@@ -301,4 +360,4 @@ const getOrderDetails = async (req, res, next) => {
   }
 };
 
-module.exports = { createOrder, updateStatus, getOrderDetails };
+module.exports = { createOrder, updateStatus, getOrderDetails, getOrders };
