@@ -25,7 +25,11 @@ const updateMeSchema = z.object({
   phone: z.string().optional(),
   avatarUrl: z.string().optional(),
   lat: z.number().optional(),
-  lng: z.number().optional()
+  lng: z.number().optional(),
+  // KYC menyusul untuk akun yang belum terverifikasi
+  nik: z.string().regex(/^\d{16}$/, 'NIK harus 16 digit').optional(),
+  ktpName: z.string().min(2).optional(),
+  ktpUrl: z.string().optional()
 });
 
 const register = async (req, res, next) => {
@@ -146,6 +150,34 @@ const updateMe = async (req, res, next) => {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+
+    // KYC menyusul: verifikasi KTP untuk akun yang belum terverifikasi.
+    if (data.nik) {
+      const me = await prisma.user.findUnique({ where: { id: userId } });
+      if (me?.isVerified) {
+        return res.status(400).json({ status: 'error', message: 'Akun sudah terverifikasi.' });
+      }
+      // NIK unik (kunci utama) + Nama (lapis tambahan), abaikan akun sendiri
+      const dupNik = await prisma.user.findFirst({
+        where: { nik: data.nik, NOT: { id: userId } }
+      });
+      if (dupNik) {
+        return res.status(409).json({ status: 'error', message: 'Identitas sudah terdaftar.' });
+      }
+      const refName = (data.ktpName || '').trim();
+      if (refName) {
+        const dupName = await prisma.user.findFirst({
+          where: { nik: { not: null }, ktpName: { equals: refName, mode: 'insensitive' }, NOT: { id: userId } }
+        });
+        if (dupName) {
+          return res.status(409).json({ status: 'error', message: 'Identitas sudah terdaftar.' });
+        }
+      }
+      updateData.nik = data.nik;
+      if (data.ktpName) updateData.ktpName = data.ktpName;
+      if (data.ktpUrl) updateData.ktpUrl = data.ktpUrl;
+      if (data.ktpUrl) updateData.isVerified = true;
+    }
 
     if (Object.keys(updateData).length > 0) {
       await prisma.user.update({ where: { id: userId }, data: updateData });

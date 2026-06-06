@@ -26,6 +26,7 @@ const search = async (req, res, next) => {
         cp."isPremium",
         u.name as "ownerName",
         u."avgRating",
+        u."isVerified" as "ownerVerified",
         ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography) as distance
       FROM "CollectorProfile" cp
       JOIN "User" u ON cp."userId" = u.id
@@ -62,7 +63,7 @@ const getCollectorById = async (req, res, next) => {
     const collector = await prisma.collectorProfile.findUnique({
       where: { id: req.params.id },
       include: {
-        user: { select: { id: true, name: true, phone: true, avatarUrl: true, avgRating: true } },
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true, avgRating: true, isVerified: true } },
         catalogs: { include: { category: true } }
       }
     });
