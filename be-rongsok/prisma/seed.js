@@ -3,60 +3,39 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
-// ── Taksonomi kategori bertingkat ────────────────────────────────────────
-// Induk (kategori utama) + anak (item spesifik yang dihargai & dipesan).
-const TAXONOMY = [
+// ── 6 Kategori (flat) ────────────────────────────────────────────────────
+// description = daftar CONTOH isi kategori (info saja, bukan item terpisah).
+// unit = satuan harga & timbang per kategori.
+const CATEGORIES = [
   {
     name: 'Plastik',
-    description: 'Botol, gelas, dan plastik keras bekas',
-    children: [
-      { name: 'Botol Plastik Bening', unit: 'kg', description: 'Botol air mineral, soda, jus' },
-      { name: 'Botol Sabun / Jerigen', unit: 'kg', description: 'Botol sampo, sabun cair, oli, jerigen kecil' },
-      { name: 'Gelas Plastik', unit: 'kg', description: 'Gelas kopi kemasan, air mineral, cup boba' },
-      { name: 'Ember / Plastik Keras', unit: 'kg', description: 'Ember, gayung, baskom, mainan keras' },
-    ],
+    unit: 'kg',
+    description: 'Botol bening, botol sabun & jerigen, gelas plastik, ember & plastik keras',
   },
   {
     name: 'Kertas & Kardus',
-    description: 'Kardus, kertas, koran bekas',
-    children: [
-      { name: 'Kardus', unit: 'kg', description: 'Kardus paket e-commerce, mi instan, rokok' },
-      { name: 'Kertas Putih', unit: 'kg', description: 'Buku tulis bekas, HVS, dokumen' },
-      { name: 'Koran & Majalah', unit: 'kg', description: 'Koran, majalah, brosur bekas' },
-    ],
+    unit: 'kg',
+    description: 'Kardus, kertas putih/HVS, buku, koran & majalah bekas',
   },
   {
     name: 'Logam & Besi',
-    description: 'Besi, aluminium, tembaga bekas',
-    children: [
-      { name: 'Besi Tua / Seng', unit: 'kg', description: 'Pagar besi, paku, pipa, seng, kaleng' },
-      { name: 'Aluminium', unit: 'kg', description: 'Kaleng soda, panci, wajan, jemuran' },
-      { name: 'Kabel & Tembaga', unit: 'kg', description: 'Kabel bekas, kuningan — harga premium' },
-    ],
+    unit: 'kg',
+    description: 'Besi tua & seng, aluminium (kaleng/panci), kabel & tembaga',
   },
   {
     name: 'Kaca & Botol',
-    description: 'Botol kaca utuh & pecahan kaca',
-    children: [
-      { name: 'Botol Kaca Utuh', unit: 'pcs', description: 'Botol kecap, sirup, bir — dihargai per botol' },
-      { name: 'Pecahan Kaca', unit: 'kg', description: 'Beling, pecahan kaca jendela/botol' },
-    ],
+    unit: 'kg',
+    description: 'Botol kaca utuh (kecap/sirup), pecahan kaca & beling',
   },
   {
     name: 'Elektronik',
-    description: 'Elektronik mati total',
-    children: [
-      { name: 'Elektronik Besar', unit: 'pcs', description: 'TV, kulkas, mesin cuci, AC rusak' },
-      { name: 'HP & Laptop Rusak', unit: 'pcs', description: 'HP, laptop, komputer mati' },
-      { name: 'Aki Bekas', unit: 'pcs', description: 'Aki mobil/motor yang sudah tekor' },
-    ],
+    unit: 'pcs',
+    description: 'TV/kulkas/mesin cuci rusak, HP & laptop mati, aki bekas',
   },
   {
     name: 'Lain-lain',
-    description: 'Kategori khusus lainnya',
-    children: [
-      { name: 'Minyak Jelantah', unit: 'liter', description: 'Minyak goreng bekas — ditampung per liter' },
-    ],
+    unit: 'liter',
+    description: 'Minyak jelantah (minyak goreng bekas)',
   },
 ];
 
@@ -70,31 +49,17 @@ async function main() {
   await prisma.collectorCatalog.deleteMany();
   await prisma.wasteCategory.deleteMany();
 
-  // Seed taksonomi: induk dulu, lalu anak
-  for (let i = 0; i < TAXONOMY.length; i++) {
-    const main = TAXONOMY[i];
-    const parent = await prisma.wasteCategory.create({
+  for (let i = 0; i < CATEGORIES.length; i++) {
+    const c = CATEGORIES[i];
+    await prisma.wasteCategory.create({
       data: {
-        name: main.name,
-        description: main.description,
-        unit: 'kg',
+        name: c.name,
+        description: c.description,
+        unit: c.unit,
         sortOrder: i,
         parentId: null,
       },
     });
-
-    for (let j = 0; j < main.children.length; j++) {
-      const child = main.children[j];
-      await prisma.wasteCategory.create({
-        data: {
-          name: child.name,
-          description: child.description,
-          unit: child.unit || 'kg',
-          sortOrder: j,
-          parentId: parent.id,
-        },
-      });
-    }
   }
 
   // Pastikan ada akun admin (upsert — tidak hapus user lain)
@@ -111,7 +76,7 @@ async function main() {
   });
 
   const total = await prisma.wasteCategory.count();
-  console.log(`Seed selesai: ${total} kategori (6 induk + sub-item). Admin: admin@rongsok.in / admin123`);
+  console.log(`Seed selesai: ${total} kategori. Admin: admin@rongsok.in / admin123`);
 }
 
 async function bcryptHash(password) {
