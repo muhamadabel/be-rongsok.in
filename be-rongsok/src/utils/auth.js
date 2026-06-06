@@ -1,8 +1,13 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'secret', {
+// Terima user object (atau id string untuk backward-compat) — encode id + role ke JWT
+const generateToken = (user) => {
+  const payload =
+    typeof user === 'object' && user !== null
+      ? { id: user.id, role: user.role }
+      : { id: user };
+  return jwt.sign(payload, process.env.JWT_SECRET || 'secret', {
     expiresIn: '24h'
   });
 };

@@ -12,6 +12,7 @@ const collectorRoutes = require('./routes/collector');
 const discoveryRoutes = require('./routes/discovery');
 const orderRoutes = require('./routes/order');
 const ratingRoutes = require('./routes/rating');
+const adminRoutes = require('./routes/admin');
 const { errorHandler } = require('./middlewares/error');
 
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api/v1/collector', collectorRoutes);
 app.use('/api/v1/discovery', discoveryRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/ratings', ratingRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

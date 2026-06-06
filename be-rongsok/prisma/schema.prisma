@@ -36,6 +36,7 @@ generator client {
    name          String
    email         String   @unique
    passwordHash  String
+   phone         String?
    role          Role     @default(CUSTOMER)
    location      Unsupported("geography(Point, 4326)")?
    avatarUrl     String?
