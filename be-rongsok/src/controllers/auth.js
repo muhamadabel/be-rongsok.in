@@ -8,7 +8,11 @@ const registerSchema = z.object({
   password: z.string().min(8),
   role: z.enum(['CUSTOMER', 'COLLECTOR']),
   phone: z.string().optional(),
-  avatarUrl: z.string().optional()
+  avatarUrl: z.string().optional(),
+  // KYC (opsional di schema agar BE backward-compatible; divalidasi di controller)
+  nik: z.string().regex(/^\d{16}$/, 'NIK harus 16 digit').optional(),
+  ktpName: z.string().min(2).optional(),
+  ktpUrl: z.string().optional()
 });
 
 const loginSchema = z.object({
@@ -33,7 +37,30 @@ const register = async (req, res, next) => {
       return res.status(400).json({ status: 'error', message: 'Email already registered' });
     }
 
+    // KYC anti wash-trading: 1 KTP = 1 akun = 1 role.
+    // NIK adalah kunci unik utama. Nama dicek sebagai lapis tambahan (case-insensitive,
+    // dibatasi ke akun yang sudah punya NIK terdaftar agar tidak false-positive nama umum).
+    if (data.nik) {
+      const dupNik = await prisma.user.findUnique({ where: { nik: data.nik } });
+      if (dupNik) {
+        return res.status(409).json({ status: 'error', message: 'Identitas sudah terdaftar.' });
+      }
+      const refName = (data.ktpName || data.name || '').trim();
+      if (refName) {
+        const dupName = await prisma.user.findFirst({
+          where: {
+            nik: { not: null },
+            ktpName: { equals: refName, mode: 'insensitive' }
+          }
+        });
+        if (dupName) {
+          return res.status(409).json({ status: 'error', message: 'Identitas sudah terdaftar.' });
+        }
+      }
+    }
+
     const hashedPassword = await hashPassword(data.password);
+    const isKyc = Boolean(data.nik && data.ktpUrl);
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -41,7 +68,11 @@ const register = async (req, res, next) => {
         passwordHash: hashedPassword,
         role: data.role,
         phone: data.phone,
-        avatarUrl: data.avatarUrl
+        avatarUrl: data.avatarUrl,
+        nik: data.nik || null,
+        ktpName: data.ktpName || null,
+        ktpUrl: data.ktpUrl || null,
+        isVerified: isKyc
       }
     });
 
@@ -50,7 +81,7 @@ const register = async (req, res, next) => {
       status: 'success',
       data: {
         access_token: token,
-        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, avatarUrl: user.avatarUrl }
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, avatarUrl: user.avatarUrl, isVerified: user.isVerified }
       }
     });
   } catch (error) {
@@ -75,7 +106,7 @@ const login = async (req, res, next) => {
       status: 'success',
       data: {
         access_token: token,
-        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, avatarUrl: user.avatarUrl }
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, avatarUrl: user.avatarUrl, isVerified: user.isVerified }
       }
     });
   } catch (error) {
@@ -92,6 +123,7 @@ const me = async (req, res, next) => {
     const rows = await prisma.$queryRaw`
       SELECT
         id, name, email, role, "avgRating", "avatarUrl", phone, "createdAt",
+        "isVerified", nik, "ktpName",
         ST_Y(location::geometry) AS lat,
         ST_X(location::geometry) AS lng
       FROM "User"
@@ -131,6 +163,7 @@ const updateMe = async (req, res, next) => {
     const rows = await prisma.$queryRaw`
       SELECT
         id, name, email, role, "avgRating", "avatarUrl", phone, "createdAt",
+        "isVerified", nik, "ktpName",
         ST_Y(location::geometry) AS lat,
         ST_X(location::geometry) AS lng
       FROM "User"
