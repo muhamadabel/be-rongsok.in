@@ -13,6 +13,7 @@ const discoveryRoutes = require('./routes/discovery');
 const orderRoutes = require('./routes/order');
 const ratingRoutes = require('./routes/rating');
 const adminRoutes = require('./routes/admin');
+const uploadRoutes = require('./routes/upload');
 const { errorHandler } = require('./middlewares/error');
 
 const app = express();
@@ -59,6 +60,7 @@ app.use('/api/v1/discovery', discoveryRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/ratings', ratingRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/upload', uploadRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

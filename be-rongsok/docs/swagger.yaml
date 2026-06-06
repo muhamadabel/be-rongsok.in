@@ -494,3 +494,48 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/RatingCreateRequest'
+  /upload:
+    post:
+      tags:
+        - "Epic 5: Media & Upload"
+      security:
+        - BearerAuth: []
+      summary: Upload a single image file to Cloudinary
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: The image file to upload
+      responses:
+        '200':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                        format: uri
+                        example: https://res.cloudinary.com/demo/image/upload/v1570975200/sample.jpg
+                      publicId:
+                        type: string
+                        example: rongsokin/sample
+                      bytes:
+                        type: integer
+                        example: 24539
+                      format:
+                        type: string
+                        example: jpg
