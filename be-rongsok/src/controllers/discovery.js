@@ -9,9 +9,12 @@ const search = async (req, res, next) => {
       return res.status(400).json({ status: 'error', message: 'lat and lng are required' });
     }
 
-    // categoryId opsional — kalau ada, filter pengepul yang punya katalog aktif kategori itu
+    // categoryId opsional. Bisa berupa kategori UTAMA (induk) atau item (anak).
+    // Kalau induk, cocokkan kalau pengepul punya katalog aktif untuk SALAH SATU anaknya.
     const categoryFilter = categoryId
-      ? Prisma.sql`AND cc."categoryId" = ${categoryId} AND cc."isActive" = true`
+      ? Prisma.sql`AND cc."isActive" = true AND cc."categoryId" IN (
+          SELECT id FROM "WasteCategory" WHERE id = ${categoryId} OR "parentId" = ${categoryId}
+        )`
       : Prisma.sql``;
 
     const collectors = await prisma.$queryRaw`
@@ -22,6 +25,7 @@ const search = async (req, res, next) => {
         cp."priorityScore",
         cp."isPremium",
         u.name as "ownerName",
+        u."avgRating",
         ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography) as distance
       FROM "CollectorProfile" cp
       JOIN "User" u ON cp."userId" = u.id
@@ -42,7 +46,10 @@ const search = async (req, res, next) => {
 
 const getCategories = async (req, res, next) => {
   try {
-    const categories = await prisma.wasteCategory.findMany();
+    // Return flat list (sudah termasuk parentId, unit, sortOrder) — FE bangun tree-nya.
+    const categories = await prisma.wasteCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
     res.status(200).json({ status: 'success', data: categories });
   } catch (error) {
     next(error);
@@ -70,4 +77,31 @@ const getCollectorById = async (req, res, next) => {
   }
 };
 
-module.exports = { search, getCategories, getCollectorById };
+// GET /discovery/stats — statistik publik untuk landing page (tanpa auth)
+const getStats = async (req, res, next) => {
+  try {
+    const [totalTransactions, totalCollectors, totalCustomers, totalCategories, weightAgg] =
+      await Promise.all([
+        prisma.order.count({ where: { status: 'COMPLETED' } }),
+        prisma.collectorProfile.count(),
+        prisma.user.count({ where: { role: 'CUSTOMER' } }),
+        prisma.wasteCategory.count(),
+        prisma.order.aggregate({ where: { status: 'COMPLETED' }, _sum: { actualWeight: true } })
+      ]);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        totalTransactions,
+        totalCollectors,
+        totalCustomers,
+        totalCategories,
+        totalWeightKg: Number(weightAgg._sum.actualWeight || 0)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { search, getCategories, getCollectorById, getStats };
