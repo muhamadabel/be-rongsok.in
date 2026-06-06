@@ -41,6 +41,11 @@ generator client {
    location      Unsupported("geography(Point, 4326)")?
    avatarUrl     String?
    avgRating     Float    @default(0)
+   // KYC (anti wash-trading: 1 KTP = 1 akun = 1 role)
+   nik           String?  @unique
+   ktpName       String?
+   ktpUrl        String?
+   isVerified    Boolean  @default(false)
    createdAt     DateTime @default(now())
    collectorProfile CollectorProfile?
    orders        Order[]  @relation("CustomerOrders")
