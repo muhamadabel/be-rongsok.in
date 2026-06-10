@@ -104,4 +104,67 @@ const getStats = async (req, res, next) => {
   }
 };
 
-module.exports = { search, getCategories, getCollectorById, getStats };
+// GET /discovery/leaderboard — papan peringkat dampak ekologis (publik).
+// Ranking customer berdasarkan total berat (kg) sampah terdaur ulang dari order COMPLETED.
+// Query ?userId=<id> opsional → balikan juga peringkat & total user tsb (meski di luar Top-N).
+const getLeaderboard = async (req, res, next) => {
+  try {
+    const { userId } = req.query;
+
+    // Top 20 customer berdasarkan total actualWeight (order COMPLETED)
+    const grouped = await prisma.order.groupBy({
+      by: ['customerId'],
+      where: { status: 'COMPLETED', actualWeight: { not: null } },
+      _sum: { actualWeight: true },
+      _count: { _all: true },
+      orderBy: { _sum: { actualWeight: 'desc' } },
+      take: 20
+    });
+
+    const ids = grouped.map((g) => g.customerId);
+    const users = ids.length
+      ? await prisma.user.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, name: true, avatarUrl: true }
+        })
+      : [];
+    const byId = Object.fromEntries(users.map((u) => [u.id, u]));
+
+    const leaderboard = grouped.map((g, i) => ({
+      rank: i + 1,
+      userId: g.customerId,
+      name: byId[g.customerId]?.name || 'Pengguna',
+      avatarUrl: byId[g.customerId]?.avatarUrl || null,
+      totalKg: Number(g._sum.actualWeight || 0),
+      orderCount: g._count._all
+    }));
+
+    let me = null;
+    if (userId) {
+      const mineAgg = await prisma.order.aggregate({
+        where: { status: 'COMPLETED', actualWeight: { not: null }, customerId: String(userId) },
+        _sum: { actualWeight: true },
+        _count: { _all: true }
+      });
+      const myKg = Number(mineAgg._sum.actualWeight || 0);
+      let rank = null;
+      if (myKg > 0) {
+        // Peringkat = jumlah customer dgn total LEBIH BESAR + 1
+        const higher = await prisma.order.groupBy({
+          by: ['customerId'],
+          where: { status: 'COMPLETED', actualWeight: { not: null } },
+          _sum: { actualWeight: true },
+          having: { actualWeight: { _sum: { gt: myKg } } }
+        });
+        rank = higher.length + 1;
+      }
+      me = { userId: String(userId), totalKg: myKg, orderCount: mineAgg._count._all, rank };
+    }
+
+    res.status(200).json({ status: 'success', data: { leaderboard, me } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { search, getCategories, getCollectorById, getStats, getLeaderboard };
