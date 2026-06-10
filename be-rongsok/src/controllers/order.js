@@ -22,6 +22,20 @@ const createOrder = async (req, res, next) => {
     const data = orderSchema.parse(req.body);
     const io = req.app.get('io');
 
+    // Anti-scam: transaksi PERTAMA wajib DROP-OFF (antar sendiri). PICKUP baru
+    // terbuka setelah customer punya >=1 order COMPLETED — mencegah pesanan jemput fiktif.
+    if (data.method === 'PICKUP') {
+      const completedCount = await prisma.order.count({
+        where: { customerId: req.user.id, status: 'COMPLETED' }
+      });
+      if (completedCount === 0) {
+        return res.status(403).json({
+          status: 'error',
+          message: 'Transaksi pertama wajib antar sendiri (drop-off). Opsi dijemput terbuka setelah 1 transaksi selesai.'
+        });
+      }
+    }
+
     // Parse items to create
     let itemsToCreate = [];
     if (data.items && data.items.length > 0) {
@@ -112,7 +126,14 @@ const createOrder = async (req, res, next) => {
           category: categoryIds[0],
           categories: categoryIds,
           estWeight: totalEstimatedWeight,
-          method: data.method
+          method: data.method,
+          // Foto live tumpukan rongsok (anti pesanan fiktif) — pengepul wajib lihat
+          photoUrl: data.photoUrl,
+          // Items multi-kategori supaya FE tak bergantung legacy single-category
+          items: itemsToCreate.map(it => ({
+            categoryId: it.categoryId,
+            estimatedWeight: it.estimatedWeight
+          }))
         });
       });
     }
@@ -294,9 +315,22 @@ const updateStatus = async (req, res, next) => {
         return res.status(400).json({ message: 'Invalid action' });
     }
 
-    // Broadcast status update
+    // Broadcast status update ke room order (customer & collector yang join order:id)
     io.to(`order:${order.id}`).emit('order_status_update', { orderId: order.id, status: newStatus });
-    
+
+    // Order keluar dari pool PENDING (diambil collector / dibatalkan customer) →
+    // bersihkan antrean SEMUA pengepul yang sempat dinotifikasi, supaya
+    // first-come-first-served terlihat instan di dashboard mereka.
+    if (action === 'accept' || action === 'cancel') {
+      const notified = await prisma.orderCollector.findMany({
+        where: { orderId: order.id },
+        select: { collectorId: true }
+      });
+      notified.forEach(c => {
+        io.to(`collector:${c.collectorId}`).emit('order_taken', { orderId: order.id });
+      });
+    }
+
     res.status(200).json({ status: 'success', data: { orderId: order.id, status: newStatus } });
   } catch (error) {
     next(error);
@@ -309,11 +343,18 @@ const getOrders = async (req, res, next) => {
     const { status, role, limit = 10 } = req.query;
 
     const where = {};
-    if (status) where.status = status;
-    if (role === 'collector') {
+    if (role === 'collector' && status === 'PENDING') {
+      // Antrean broadcast: order PENDING yang ditawarkan ke collector ini & belum
+      // diambil siapa pun. Relasi disimpan di tabel OrderCollector (status 'notified').
+      where.status = 'PENDING';
+      where.collectorId = null;
+      where.orderCollectors = { some: { collectorId: req.user.id, status: 'notified' } };
+    } else if (role === 'collector') {
       where.collectorId = req.user.id;
+      if (status) where.status = status;
     } else {
       where.customerId = req.user.id;
+      if (status) where.status = status;
     }
 
     const orders = await prisma.order.findMany({
