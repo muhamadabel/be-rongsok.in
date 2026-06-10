@@ -40,15 +40,18 @@ const CATEGORIES = [
 ];
 
 async function main() {
-  // Hapus data yang merujuk kategori (FK-safe). DB fresh, jadi aman.
+  // Hapus data yang merujuk kategori & user (FK-safe). DB fresh, jadi aman.
   await prisma.rating.deleteMany();
   await prisma.receipt.deleteMany();
   await prisma.orderCollector.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.collectorCatalog.deleteMany();
+  await prisma.collectorProfile.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.wasteCategory.deleteMany();
 
+  // Seed Waste Categories
   for (let i = 0; i < CATEGORIES.length; i++) {
     const c = CATEGORIES[i];
     await prisma.wasteCategory.create({
@@ -62,12 +65,10 @@ async function main() {
     });
   }
 
-  // Pastikan ada akun admin (upsert — tidak hapus user lain)
+  // Seed Admin
   const adminHash = await bcryptHash('admin123');
-  await prisma.user.upsert({
-    where: { email: 'admin@rongsok.in' },
-    update: { role: 'ADMIN' },
-    create: {
+  await prisma.user.create({
+    data: {
       name: 'Admin Rongsok',
       email: 'admin@rongsok.in',
       passwordHash: adminHash,
@@ -75,8 +76,76 @@ async function main() {
     },
   });
 
-  const total = await prisma.wasteCategory.count();
-  console.log(`Seed selesai: ${total} kategori. Admin: admin@rongsok.in / admin123`);
+  // Seed Customer (Rizky)
+  const customerHash = await bcryptHash('customer123');
+  const customer = await prisma.user.create({
+    data: {
+      name: 'Rizky Customer',
+      email: 'rizky@example.com',
+      passwordHash: customerHash,
+      role: 'CUSTOMER',
+      phone: '081234567890',
+      isVerified: true,
+    },
+  });
+
+  // Set Customer Location (Yogyakarta)
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET location = ST_SetSRID(ST_MakePoint(110.3695, -7.7956), 4326)::geography
+    WHERE id = ${customer.id}
+  `;
+
+  // Seed Collector (Budi)
+  const collectorHash = await bcryptHash('collector123');
+  const collector = await prisma.user.create({
+    data: {
+      name: 'Budi Pengepul',
+      email: 'budi@collector.com',
+      passwordHash: collectorHash,
+      role: 'COLLECTOR',
+      phone: '089876543210',
+      isVerified: true,
+    },
+  });
+
+  // Set Collector Location (Yogyakarta)
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET location = ST_SetSRID(ST_MakePoint(110.3695, -7.7956), 4326)::geography
+    WHERE id = ${collector.id}
+  `;
+
+  // Seed Collector Profile
+  const collectorProfile = await prisma.collectorProfile.create({
+    data: {
+      userId: collector.id,
+      shopName: 'Lapak Budi Yogyakarta',
+      description: 'Pengepul Daur Ulang Terpercaya',
+      radiusKm: 25,
+      isOpen: true,
+    },
+  });
+
+  // Seed Collector Catalog for Budi for all categories
+  const categories = await prisma.wasteCategory.findMany();
+  for (const cat of categories) {
+    await prisma.collectorCatalog.create({
+      data: {
+        collectorId: collectorProfile.id,
+        categoryId: cat.id,
+        minPrice: 1000,
+        maxPrice: 5000,
+        isActive: true,
+      },
+    });
+  }
+
+  const totalCategories = await prisma.wasteCategory.count();
+  console.log(`Seed selesai: ${totalCategories} kategori.`);
+  console.log(`- Admin: admin@rongsok.in / admin123`);
+  console.log(`- Customer: rizky@example.com / customer123`);
+  console.log(`- Collector: budi@collector.com / collector123 (Lapak Budi Yogyakarta)`);
 }
 
 async function bcryptHash(password) {
