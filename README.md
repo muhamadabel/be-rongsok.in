@@ -138,6 +138,8 @@ Authorization: Bearer <jwt_token>
 - `POST /auth/register` - Registrasi (pilih role: CUSTOMER/COLLECTOR)
 - `POST /auth/login` - Login (return JWT)
 - `GET /auth/me` - Get current user profile
+- `PATCH /auth/me` - Update profile (`name`, `phone`, `avatarUrl`, `lat`, `lng`) & KYC (`nik`, `ktpName`, `ktpUrl`). Status `isVerified` otomatis menjadi `true` jika `nik` (16 digit) dan `ktpUrl` berhasil disimpan.
+- `POST /upload` - Upload gambar ke Cloudinary (Optional Auth, multipart/form-data dengan field `image`, maks 5MB)
 
 #### Discovery Module
 - `GET /discovery/search?lat=X&lng=Y&category=kardus&radius=5` - Cari pengepul terdekat (PostGIS)
