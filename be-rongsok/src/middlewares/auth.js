@@ -16,6 +16,20 @@ const protect = (req, res, next) => {
   }
 };
 
+// Optional auth — pasang req.user kalau ada token valid, tapi JANGAN tolak kalau tidak ada.
+// Dipakai di /upload supaya foto KTP saat REGISTER (user belum punya token) tetap bisa diunggah.
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'secret');
+    } catch (error) {
+      // token tidak valid → perlakukan sebagai anonim, jangan blokir
+    }
+  }
+  next();
+};
+
 // Role guard — JWT sekarang sudah include role (lihat utils/auth.generateToken)
 const authorize = (...roles) => {
   return (req, res, next) => {
@@ -29,4 +43,4 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+module.exports = { protect, authorize, optionalAuth };
