@@ -380,6 +380,16 @@ const getOrders = async (req, res, next) => {
   }
 };
 
+// Ambil lat/lng dari User.location (PostGIS, kolom Unsupported → harus raw query)
+const getUserCoords = async (userId) => {
+  if (!userId) return null;
+  const rows = await prisma.$queryRaw`
+    SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng
+    FROM "User" WHERE id = ${userId} AND location IS NOT NULL LIMIT 1
+  `;
+  return rows[0] ? { lat: Number(rows[0].lat), lng: Number(rows[0].lng) } : null;
+};
+
 const getOrderDetails = async (req, res, next) => {
   try {
     const order = await prisma.order.findUnique({
@@ -395,7 +405,27 @@ const getOrderDetails = async (req, res, next) => {
         }
       }
     });
-    res.status(200).json({ status: 'success', data: order });
+
+    if (!order) {
+      return res.status(200).json({ status: 'success', data: null });
+    }
+
+    // Koordinat kedua pihak untuk peta rute antar/jemput di FE.
+    const [custCoords, collCoords] = await Promise.all([
+      getUserCoords(order.customerId),
+      getUserCoords(order.collectorId)
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        ...order,
+        customerLat: custCoords?.lat ?? null,
+        customerLng: custCoords?.lng ?? null,
+        collectorLat: collCoords?.lat ?? null,
+        collectorLng: collCoords?.lng ?? null
+      }
+    });
   } catch (error) {
     next(error);
   }
