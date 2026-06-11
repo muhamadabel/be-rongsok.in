@@ -39,6 +39,14 @@ io.on('connection', (socket) => {
     console.log(`User joined room: ${roomId}`);
   });
 
+  // Live tracking: relay posisi pihak yang sedang menuju lokasi ke lawan transaksi.
+  // payload: { orderId, lat, lng, role }. Dikirim ke room order:<orderId> kecuali pengirim.
+  socket.on('location_update', (payload) => {
+    if (payload && payload.orderId) {
+      socket.to(`order:${payload.orderId}`).emit('location_update', payload);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });

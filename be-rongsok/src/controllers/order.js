@@ -192,6 +192,17 @@ const updateStatus = async (req, res, next) => {
         });
         break;
       
+      case 'arrive': // Pihak yang menuju lokasi (atau lawannya) menandai SUDAH SAMPAI
+        if (order.status !== 'CONFIRMED') {
+          return res.status(400).json({ status: 'error', message: 'Pesanan belum siap untuk ditandai sampai' });
+        }
+        if (order.customerId !== req.user.id && order.collectorId !== req.user.id) {
+          return res.status(403).json({ status: 'error', message: 'Anda bukan bagian dari pesanan ini' });
+        }
+        newStatus = 'IN_PROGRESS';
+        await prisma.order.update({ where: { id }, data: { status: newStatus } });
+        break;
+
       case 'validate': // Collector submits actual weight & price per category
         if (order.status !== 'CONFIRMED' && order.status !== 'IN_PROGRESS') {
           return res.status(400).json({ message: 'Invalid state' });
