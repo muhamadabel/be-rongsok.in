@@ -26,6 +26,7 @@ const search = async (req, res, next) => {
         cp."isPremium",
         u.name as "ownerName",
         u."avgRating",
+        u."isVerified" as "ownerVerified",
         ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography) as distance
       FROM "CollectorProfile" cp
       JOIN "User" u ON cp."userId" = u.id

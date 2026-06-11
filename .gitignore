@@ -34,3 +34,22 @@ coverage/
 .cache/
 *.log
 rongsok-be-changes.patch
+
+# Agent / AI tooling (tidak perlu masuk repo)
+.agents/
+skills-lock.json
+captain-definition
+CHANGES_HANDOFF.md
+fe_agent_prompt.md
+
+# Dokumen planning & desain (simpan di Google Drive / Notion)
+be-rongsok/docs/*.md
+be-rongsok/docs/*.txt
+be-rongsok/docs/*.docx
+be-rongsok/docs/*.docx.bak
+be-rongsok/docs/*.zip
+be-rongsok/docs/activity\ diagram/
+be-rongsok/docs/arsitecture/
+be-rongsok/docs/flow/
+be-rongsok/docs/use\ case/
+be-rongsok/docs/use\ case\ baru/
