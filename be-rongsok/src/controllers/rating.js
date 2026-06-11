@@ -41,6 +41,10 @@ const submitRating = async (req, res, next) => {
     if (error instanceof z.ZodError) {
       return res.status(422).json({ status: 'error', message: 'Validation failed', errors: error.errors });
     }
+    // Unique constraint (orderId, raterId) → user sudah pernah menilai order ini
+    if (error && error.code === 'P2002') {
+      return res.status(409).json({ status: 'error', message: 'Kamu sudah memberi rating untuk transaksi ini.' });
+    }
     next(error);
   }
 };
