@@ -95,16 +95,16 @@ const createOrder = async (req, res, next) => {
         }];
       }
     } else {
-      // Broadcast to nearby collectors based on PostGIS and categories
+      // Broadcast (REBUTAN) ke SEMUA pengepul yang BUKA & dalam radius layanannya.
+      // Tidak lagi mewajibkan katalog kategori cocok — biar order selalu sampai ke
+      // pengepul terdekat yang buka; mereka bisa tolak kalau tak menerima kategori itu.
       collectors = await prisma.$queryRaw`
-        SELECT DISTINCT cp.id, cp."userId"
+        SELECT cp.id, cp."userId"
         FROM "CollectorProfile" cp
         JOIN "User" u ON cp."userId" = u.id
-        JOIN "CollectorCatalog" cc ON cp.id = cc."collectorId"
-        WHERE 
-          cc."categoryId" = ANY(${categoryIds}) AND 
-          cc."isActive" = true AND
+        WHERE
           cp."isOpen" = true AND
+          u.location IS NOT NULL AND
           ST_DWithin(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(data.lng)}, ${parseFloat(data.lat)}), 4326)::geography, cp."radiusKm" * 1000)
       `;
     }
