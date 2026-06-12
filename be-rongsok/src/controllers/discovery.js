@@ -17,8 +17,10 @@ const search = async (req, res, next) => {
         )`
       : Prisma.sql``;
 
+    // maxPrice = harga ambil TERTINGGI pengepul (untuk sort "harga termahal" di FE).
+    // Saat categoryId difilter → harga utk kategori itu; tanpa filter → harga aktif tertinggi.
     const collectors = await prisma.$queryRaw`
-      SELECT DISTINCT
+      SELECT
         cp.id,
         cp."shopName",
         cp.description,
@@ -27,7 +29,8 @@ const search = async (req, res, next) => {
         u.name as "ownerName",
         u."avgRating",
         u."isVerified" as "ownerVerified",
-        ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography) as distance
+        ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography) as distance,
+        MAX(CASE WHEN cc."isActive" = true THEN cc."maxPrice" END) as "maxPrice"
       FROM "CollectorProfile" cp
       JOIN "User" u ON cp."userId" = u.id
       LEFT JOIN "CollectorCatalog" cc ON cp.id = cc."collectorId"
@@ -36,6 +39,7 @@ const search = async (req, res, next) => {
         ${categoryFilter}
         AND u.location IS NOT NULL
         AND ST_DWithin(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography, ${parseFloat(radius)} * 1000)
+      GROUP BY cp.id, u.id
       ORDER BY cp."isPremium" DESC, distance ASC
     `;
 
