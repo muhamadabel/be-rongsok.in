@@ -5,7 +5,6 @@ Backend server untuk platform Rongsok.in—marketplace daur ulang sirkular berba
 ## 🚀 Fitur Utama
 - **Smart Search**: Pencarian pengepul terdekat menggunakan PostgreSQL + PostGIS (query spasial `ST_DWithin` & `ST_Distance`).
 - **Real-time OMS**: Manajemen pesanan real-time menggunakan WebSockets (Socket.IO).
-- **Nota Digital**: Penerbitan struk transaksi (receipt) setelah order selesai.
 - **Rating Dua Arah**: Sistem reputasi tepercaya untuk pelanggan dan pengepul.
 
 ## 🏗️ Tech Stack
