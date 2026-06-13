@@ -76,6 +76,16 @@ const getCollectorById = async (req, res, next) => {
       return res.status(404).json({ status: 'error', message: 'Pengepul tidak ditemukan' });
     }
 
+    // Koordinat lapak (parse PostGIS User.location) — untuk peta lokasi & hitung jarak di FE.
+    const coords = await prisma.$queryRaw`
+      SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng
+      FROM "User" WHERE id = ${collector.userId} LIMIT 1
+    `;
+    if (coords && coords[0] && coords[0].lat != null) {
+      collector.user.lat = coords[0].lat;
+      collector.user.lng = coords[0].lng;
+    }
+
     res.status(200).json({ status: 'success', data: collector });
   } catch (error) {
     next(error);
