@@ -64,7 +64,9 @@ const register = async (req, res, next) => {
     }
 
     const hashedPassword = await hashPassword(data.password);
-    const isKyc = Boolean(data.nik && data.ktpUrl);
+    // Terverifikasi begitu NIK terbaca. NIK dibaca AI dari foto KTP asli & dikunci;
+    // foto KTP sengaja tidak disimpan demi privasi, jadi tak lagi syaratkan ktpUrl.
+    const isKyc = Boolean(data.nik);
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -177,8 +179,8 @@ const updateMe = async (req, res, next) => {
       updateData.nik = data.nik;
       if (data.ktpName !== undefined) updateData.ktpName = data.ktpName;
       if (data.ktpUrl !== undefined) updateData.ktpUrl = data.ktpUrl;
-      // Verified hanya bila NIK + foto KTP lengkap (konsisten dgn logika register)
-      if (data.nik && data.ktpUrl) updateData.isVerified = true;
+      // Terverifikasi begitu NIK terbaca (konsisten dgn register; foto KTP tak disimpan)
+      if (data.nik) updateData.isVerified = true;
     }
 
     if (Object.keys(updateData).length > 0) {
