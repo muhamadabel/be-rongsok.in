@@ -10,27 +10,27 @@ const CATEGORIES = [
   {
     name: 'Plastik',
     unit: 'kg',
-    description: 'Botol bening, botol sabun & jerigen, gelas plastik, ember & plastik keras',
+    description: 'Botol & gelas bening, emberan, botol sabun/oli, terpal, karung, plastik LIT/bening, mainan, & plastik keras',
   },
   {
     name: 'Kertas & Kardus',
     unit: 'kg',
-    description: 'Kardus, kertas putih/HVS, buku, koran & majalah bekas',
+    description: 'Kardus packing, kertas putih/HVS, buku, koran, majalah, & kertas duplex (kotak kemasan)',
   },
   {
     name: 'Logam & Besi',
     unit: 'kg',
-    description: 'Besi tua & seng, aluminium (kaleng/panci), kabel & tembaga',
+    description: 'Besi tua/seng, aluminium (kaleng/wajan), kuningan (keran/gembok), kabel, & tembaga',
   },
   {
     name: 'Kaca & Botol',
     unit: 'kg',
-    description: 'Botol kaca utuh (kecap/sirup), pecahan kaca & beling',
+    description: 'Botol kaca utuh (kecap/sirup/bir) & pecahan kaca/beling kiloan',
   },
   {
     name: 'Elektronik',
     unit: 'pcs',
-    description: 'TV/kulkas/mesin cuci rusak, HP & laptop mati, aki bekas',
+    description: 'Aki bekas, TV/kulkas/mesin cuci rusak, kompresor, HP/laptop mati, & komponen sirkuit',
   },
   {
     name: 'Lain-lain',
@@ -40,7 +40,16 @@ const CATEGORIES = [
 ];
 
 async function main() {
-  // Hapus data yang merujuk kategori & user (FK-safe). DB fresh, jadi aman.
+  // IDEMPOTEN: seed HANYA untuk DB kosong (deploy pertama). Kalau sudah ada data,
+  // lewati total — jangan wipe + reseed. Mencegah setiap deploy ulang menghapus
+  // user/order/kategori produksi (entrypoint menjalankan seeder tiap start).
+  const existingCategories = await prisma.wasteCategory.count();
+  if (existingCategories > 0) {
+    console.log(`Seed dilewati: DB sudah berisi ${existingCategories} kategori — data lama dijaga (tidak di-reset).`);
+    return;
+  }
+
+  // Hapus data yang merujuk kategori & user (FK-safe). Hanya tercapai saat DB kosong.
   await prisma.rating.deleteMany();
   await prisma.receipt.deleteMany();
   await prisma.orderCollector.deleteMany();
