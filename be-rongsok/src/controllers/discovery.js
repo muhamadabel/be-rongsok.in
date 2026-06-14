@@ -69,7 +69,7 @@ const getCollectorById = async (req, res, next) => {
     const collector = await prisma.collectorProfile.findUnique({
       where: { id: req.params.id },
       include: {
-        user: { select: { id: true, name: true, phone: true, avatarUrl: true, avgRating: true } },
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true, avgRating: true, addressText: true } },
         catalogs: { include: { category: true } }
       }
     });

@@ -9,6 +9,7 @@ const registerSchema = z.object({
   role: z.enum(['CUSTOMER', 'COLLECTOR']),
   phone: z.string().optional(),
   avatarUrl: z.string().optional(),
+  addressText: z.string().max(500).optional(),
   // KYC (opsional di schema agar BE backward-compatible; divalidasi di controller)
   nik: z.string().regex(/^\d{16}$/, 'NIK harus 16 digit').optional(),
   ktpName: z.string().min(2).optional(),
@@ -24,6 +25,7 @@ const updateMeSchema = z.object({
   name: z.string().min(2).optional(),
   phone: z.string().optional(),
   avatarUrl: z.string().optional(),
+  addressText: z.string().max(500).optional(),
   lat: z.number().optional(),
   lng: z.number().optional(),
   // KYC (opsional) — dipakai jalur verifikasi in-app /profile/verify di FE
@@ -75,6 +77,7 @@ const register = async (req, res, next) => {
         role: data.role,
         phone: data.phone,
         avatarUrl: data.avatarUrl,
+        addressText: data.addressText || null,
         nik: data.nik || null,
         ktpName: data.ktpName || null,
         ktpUrl: data.ktpUrl || null,
@@ -129,7 +132,7 @@ const me = async (req, res, next) => {
     const rows = await prisma.$queryRaw`
       SELECT
         id, name, email, role, "avgRating", "avatarUrl", phone, "createdAt",
-        "isVerified", nik, "ktpName",
+        "isVerified", nik, "ktpName", "addressText",
         ST_Y(location::geometry) AS lat,
         ST_X(location::geometry) AS lng
       FROM "User"
@@ -152,6 +155,7 @@ const updateMe = async (req, res, next) => {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+    if (data.addressText !== undefined) updateData.addressText = data.addressText;
 
     // KYC: simpan NIK / nama-KTP / URL-KTP + tandai verified.
     // Cek duplikat identitas (anti wash-trading) sama seperti saat register,
@@ -199,7 +203,7 @@ const updateMe = async (req, res, next) => {
     const rows = await prisma.$queryRaw`
       SELECT
         id, name, email, role, "avgRating", "avatarUrl", phone, "createdAt",
-        "isVerified", nik, "ktpName",
+        "isVerified", nik, "ktpName", "addressText",
         ST_Y(location::geometry) AS lat,
         ST_X(location::geometry) AS lng
       FROM "User"

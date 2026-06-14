@@ -6,7 +6,9 @@ const profileSchema = z.object({
   description: z.string().optional(),
   radiusKm: z.number().min(1).max(50),
   isOpen: z.boolean().optional(),
-  shopImageUrl: z.string().optional()
+  shopImageUrl: z.string().optional(),
+  // Jam buka (teks bebas). Informatif saja — buka/tutup tetap manual via isOpen.
+  operatingHours: z.string().max(200).optional()
 });
 
 const catalogSchema = z.array(z.object({

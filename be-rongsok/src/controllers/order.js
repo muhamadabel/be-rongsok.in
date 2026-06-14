@@ -7,6 +7,7 @@ const orderSchema = z.object({
   notes: z.string().optional(),
   method: z.enum(['PICKUP', 'DROPOFF']),
   photoUrl: z.string().optional(),
+  addressText: z.string().max(500).optional(),
   lat: z.number(),
   lng: z.number(),
   collectorId: z.string().optional(),
@@ -63,6 +64,7 @@ const createOrder = async (req, res, next) => {
         estimatedWeight: totalEstimatedWeight,
         method: data.method,
         photoUrl: data.photoUrl,
+        addressText: data.addressText || null,
         collectorId: data.collectorId || null,
         status: 'PENDING',
         items: {
@@ -371,7 +373,7 @@ const getOrders = async (req, res, next) => {
     const orders = await prisma.order.findMany({
       where,
       include: {
-        customer: { select: { id: true, name: true, email: true, phone: true, avatarUrl: true } },
+        customer: { select: { id: true, name: true, email: true, phone: true, avatarUrl: true, avgRating: true, addressText: true } },
         collector: {
           select: {
             id: true, name: true, email: true, phone: true, avatarUrl: true,
@@ -385,10 +387,47 @@ const getOrders = async (req, res, next) => {
       take: Number(limit) || 10
     });
 
-    res.status(200).json({ status: 'success', data: orders });
+    // Lengkapi koordinat (PostGIS) + jarak untuk peta & kartu detail pesanan di FE.
+    // Untuk antrean broadcast (order PENDING belum ber-collector), titik pengepul =
+    // lokasi collector yang sedang melihat (req.user).
+    const viewerCoords = role === 'collector' ? await getUserCoords(req.user.id) : null;
+    const enriched = await Promise.all(
+      orders.map(async (o) => {
+        const [custCoords, ownColl] = await Promise.all([
+          getUserCoords(o.customerId),
+          o.collectorId ? getUserCoords(o.collectorId) : Promise.resolve(null)
+        ]);
+        const collCoords = ownColl || viewerCoords;
+        return {
+          ...o,
+          customerLat: custCoords?.lat ?? null,
+          customerLng: custCoords?.lng ?? null,
+          collectorLat: collCoords?.lat ?? null,
+          collectorLng: collCoords?.lng ?? null,
+          distanceKm: haversineKm(custCoords, collCoords)
+        };
+      })
+    );
+
+    res.status(200).json({ status: 'success', data: enriched });
   } catch (error) {
     next(error);
   }
+};
+
+// Jarak garis lurus (km) antara dua titik {lat,lng} — Haversine. null bila salah satu kosong.
+const haversineKm = (a, b) => {
+  if (!a || !b) return null;
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
 };
 
 // Ambil lat/lng dari User.location (PostGIS, kolom Unsupported → harus raw query)

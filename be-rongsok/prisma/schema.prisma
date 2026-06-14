@@ -39,6 +39,8 @@ generator client {
    phone         String?
    role          Role     @default(CUSTOMER)
    location      Unsupported("geography(Point, 4326)")?
+   // Deskripsi alamat tertulis (jalan, patokan, dll) — pelengkap titik PostGIS
+   addressText   String?
    avatarUrl     String?
    avgRating     Float    @default(0)
    // KYC (anti wash-trading: 1 KTP = 1 akun = 1 role)
@@ -65,6 +67,9 @@ generator client {
    shopImageUrl String?
    radiusKm    Float    @default(5)
    isOpen      Boolean  @default(true)
+   // Jam buka lapak (teks bebas, mis. "Senin–Sabtu 08.00–17.00"). Hanya informatif —
+   // buka/tutup tetap manual lewat isOpen, tidak otomatis ikut jam ini.
+   operatingHours String?
    isPremium   Boolean  @default(false)
    priorityScore Int    @default(0)
    maxConcurrentOrders Int @default(5)
@@ -108,6 +113,8 @@ generator client {
     categoryId        String?
     method            OrderMethod
     photoUrl          String?
+    // Deskripsi alamat jemput/antar untuk order ini (disalin dari profil saat order dibuat)
+    addressText       String?
     transactionProofUrl String?
     estimatedWeight   Float?
     actualWeight      Float?
