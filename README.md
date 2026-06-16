@@ -46,4 +46,4 @@ npm run dev
 Server backend akan aktif di `http://localhost:3000`.
 
 ---
-*Developed for OLIVIA Competition @ Yogyakarta* ♻️
+*Developed for OLIVIA Competition @ Yogyakarta* ♻️ (CI/CD Test)
