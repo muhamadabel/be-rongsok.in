@@ -1,0 +1,269 @@
+{
+  "info": {
+    "name": "Rongsok.in API Testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Epic 1: Autentikasi & Onboarding",
+      "item": [
+        {
+          "name": "Register Customer (Baru)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Customer\",\n  \"email\": \"budi@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"CUSTOMER\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Collector (Baru)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pak Pengepul\",\n  \"email\": \"pengepul@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"COLLECTOR\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login Customer (Dari Seed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rizky@example.com\",\n  \"password\": \"customer123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Collector (Dari Seed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@collector.com\",\n  \"password\": \"collector123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Create Collector Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopName\": \"Lapak Budi Baru\",\n  \"description\": \"Menerima segala macam rongsokan\",\n  \"radiusKm\": 10,\n  \"isOpen\": true,\n  \"isPremium\": false,\n  \"priorityScore\": 0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/collector/profile",
+              "host": ["{{base_url}}"],
+              "path": ["collector", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Catalogs",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"categoryId\": \"<INSERT_CATEGORY_ID_HERE>\",\n    \"minPrice\": 1000,\n    \"maxPrice\": 2000,\n    \"isActive\": true\n  }\n]"
+            },
+            "url": {
+              "raw": "{{base_url}}/collector/catalogs",
+              "host": ["{{base_url}}"],
+              "path": ["collector", "catalogs"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Epic 2: Pencarian & Discovery",
+      "item": [
+        {
+          "name": "Search Collectors",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/discovery/search?lat=-7.7956&lng=110.3695&categoryId=<CATEGORY_ID>&radius=5",
+              "host": ["{{base_url}}"],
+              "path": ["discovery", "search"],
+              "query": [
+                { "key": "lat", "value": "-7.7956" },
+                { "key": "lng", "value": "110.3695" },
+                { "key": "categoryId", "value": "<CATEGORY_ID>" },
+                { "key": "radius", "value": "5" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Epic 3: Order Management System",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"<CATEGORY_ID>\",\n  \"estimatedWeight\": 5.5,\n  \"photoUrl\": \"https://cloudinary.com/sample.jpg\",\n  \"lat\": -7.7956,\n  \"lng\": 110.3695,\n  \"method\": \"PICKUP\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/<ORDER_ID>",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "<ORDER_ID>"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"accept\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/<ORDER_ID>",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "<ORDER_ID>"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Epic 4: Rating & Trust",
+      "item": [
+        {
+          "name": "Submit Rating",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"<ORDER_ID>\",\n  \"raterId\": \"<RATER_ID>\",\n  \"rateeId\": \"<RATEE_ID>\",\n  \"score\": 5,\n  \"reviewText\": \"Mantap pelayanannya!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ratings",
+              "host": ["{{base_url}}"],
+              "path": ["ratings"]
+            }
+          }
+        },
+        {
+          "name": "Get User Ratings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ratings/user/<USER_ID>",
+              "host": ["{{base_url}}"],
+              "path": ["ratings", "user", "<USER_ID>"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
