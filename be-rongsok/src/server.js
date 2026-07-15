@@ -20,13 +20,17 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Sesuaikan dengan domain frontend nantinya
+    origin: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE']
   }
 });
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
 
 // Socket.IO Logic
