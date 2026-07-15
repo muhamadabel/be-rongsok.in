@@ -3,9 +3,6 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
-// ── 6 Kategori (flat) ────────────────────────────────────────────────────
-// description = daftar CONTOH isi kategori (info saja, bukan item terpisah).
-// unit = satuan harga & timbang per kategori.
 const CATEGORIES = [
   {
     name: 'Plastik',
@@ -40,16 +37,9 @@ const CATEGORIES = [
 ];
 
 async function main() {
-  // IDEMPOTEN: seed HANYA untuk DB kosong (deploy pertama). Kalau sudah ada data,
-  // lewati total — jangan wipe + reseed. Mencegah setiap deploy ulang menghapus
-  // user/order/kategori produksi (entrypoint menjalankan seeder tiap start).
-  const existingCategories = await prisma.wasteCategory.count();
-  if (existingCategories > 0) {
-    console.log(`Seed dilewati: DB sudah berisi ${existingCategories} kategori — data lama dijaga (tidak di-reset).`);
-    return;
-  }
-
-  // Hapus data yang merujuk kategori & user (FK-safe). Hanya tercapai saat DB kosong.
+  console.log("Wiping existing database records to perform a clean seed...");
+  
+  // 1. Wipe data in Foreign Key safe order
   await prisma.rating.deleteMany();
   await prisma.receipt.deleteMany();
   await prisma.orderCollector.deleteMany();
@@ -60,10 +50,12 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.wasteCategory.deleteMany();
 
-  // Seed Waste Categories
+  console.log("Seeding waste categories...");
+  // 2. Seed Waste Categories
+  const categoryMap = {};
   for (let i = 0; i < CATEGORIES.length; i++) {
     const c = CATEGORIES[i];
-    await prisma.wasteCategory.create({
+    const createdCat = await prisma.wasteCategory.create({
       data: {
         name: c.name,
         description: c.description,
@@ -72,10 +64,21 @@ async function main() {
         parentId: null,
       },
     });
+    categoryMap[c.name] = createdCat;
   }
 
-  // Seed Admin
-  const adminHash = await bcryptHash('admin123');
+  const paperCategory = categoryMap['Kertas & Kardus'];
+  const plasticCategory = categoryMap['Plastik'];
+
+  console.log("Generating password hashes...");
+  // 3. Generate password hashes
+  const salt = await bcrypt.genSalt(10);
+  const adminHash = await bcrypt.hash('admin123', salt);
+  const collectorHash = await bcrypt.hash('collector123', salt);
+  const customerHash = await bcrypt.hash('customer123', salt);
+
+  console.log("Seeding Admin account...");
+  // 4. Seed Admin
   await prisma.user.create({
     data: {
       name: 'Admin Rongsok',
@@ -85,29 +88,9 @@ async function main() {
     },
   });
 
-  // Seed Customer (Rizky)
-  const customerHash = await bcryptHash('customer123');
-  const customer = await prisma.user.create({
-    data: {
-      name: 'Rizky Customer',
-      email: 'rizky@example.com',
-      passwordHash: customerHash,
-      role: 'CUSTOMER',
-      phone: '081234567890',
-      isVerified: true,
-    },
-  });
-
-  // Set Customer Location (Yogyakarta)
-  await prisma.$executeRaw`
-    UPDATE "User"
-    SET location = ST_SetSRID(ST_MakePoint(110.3695, -7.7956), 4326)::geography
-    WHERE id = ${customer.id}
-  `;
-
-  // Seed Collector (Budi)
-  const collectorHash = await bcryptHash('collector123');
-  const collector = await prisma.user.create({
+  console.log("Seeding 2 Collector accounts (Open & Closed)...");
+  // 5. Seed Collectors (Budi & Eco)
+  const budi = await prisma.user.create({
     data: {
       name: 'Budi Pengepul',
       email: 'budi@collector.com',
@@ -118,53 +101,225 @@ async function main() {
     },
   });
 
-  // Set Collector Location (Yogyakarta)
+  const ecoCollector = await prisma.user.create({
+    data: {
+      name: 'Pak Pengepul Eco',
+      email: 'eco.collector@example.com',
+      passwordHash: collectorHash,
+      role: 'COLLECTOR',
+      phone: '089999888777',
+      isVerified: true,
+    },
+  });
+
+  // Set Collector Locations in Yogyakarta
   await prisma.$executeRaw`
     UPDATE "User"
     SET location = ST_SetSRID(ST_MakePoint(110.3695, -7.7956), 4326)::geography
-    WHERE id = ${collector.id}
+    WHERE id IN (${budi.id}, ${ecoCollector.id})
   `;
 
-  // Seed Collector Profile
-  const collectorProfile = await prisma.collectorProfile.create({
+  // Seed Profiles
+  const budiProfile = await prisma.collectorProfile.create({
     data: {
-      userId: collector.id,
+      userId: budi.id,
       shopName: 'Lapak Budi Yogyakarta',
-      description: 'Pengepul Daur Ulang Terpercaya',
+      description: 'Pengepul Daur Ulang Terpercaya & Cepat',
       radiusKm: 25,
       isOpen: true,
     },
   });
 
-  // Seed Collector Catalog for Budi for all categories
-  const categories = await prisma.wasteCategory.findMany();
-  for (const cat of categories) {
+  const ecoProfile = await prisma.collectorProfile.create({
+    data: {
+      userId: ecoCollector.id,
+      shopName: 'Lapak Eco Yogyakarta',
+      description: 'Mitra Daur Ulang Khusus Ramah Lingkungan',
+      radiusKm: 15,
+      isOpen: false, // Testing closed shop toggle
+    },
+  });
+
+  // Seed Catalogs for both collectors
+  const allCategories = Object.values(categoryMap);
+  for (const cat of allCategories) {
     await prisma.collectorCatalog.create({
       data: {
-        collectorId: collectorProfile.id,
+        collectorId: budiProfile.id,
         categoryId: cat.id,
         minPrice: 1000,
         maxPrice: 5000,
         isActive: true,
       },
     });
+
+    await prisma.collectorCatalog.create({
+      data: {
+        collectorId: ecoProfile.id,
+        categoryId: cat.id,
+        minPrice: 1500,
+        maxPrice: 4500,
+        isActive: true,
+      },
+    });
   }
 
-  const totalCategories = await prisma.wasteCategory.count();
-  console.log(`Seed selesai: ${totalCategories} kategori.`);
-  console.log(`- Admin: admin@rongsok.in / admin123`);
-  console.log(`- Customer: rizky@example.com / customer123`);
-  console.log(`- Collector: budi@collector.com / collector123 (Lapak Budi Yogyakarta)`);
-}
+  console.log("Seeding 6 Customer accounts (across different ecoimpact tiers)...");
+  // 6. Seed Customers & completed orders targets
+  const customerSpecs = [
+    {
+      name: "Rizky Customer",
+      email: "rizky@example.com",
+      weightKg: 15.0,
+      tier: "Pejuang Daur Ulang (15.0 kg)",
+      hasCancelledOrder: true
+    },
+    {
+      name: "Tegar Pemula Pasif",
+      email: "tegar.pasif@example.com",
+      weightKg: 0,
+      tier: "Pemula Hijau (0 kg)",
+      hasCancelledOrder: false
+    },
+    {
+      name: "Arif Pemula Hijau",
+      email: "arif.pemula@example.com",
+      weightKg: 5.5,
+      tier: "Pemula Hijau (5.5 kg)",
+      hasCancelledOrder: false
+    },
+    {
+      name: "Dinda Pejuang",
+      email: "dinda.pejuang@example.com",
+      weightKg: 28.3,
+      tier: "Pejuang Daur Ulang (28.3 kg)",
+      hasCancelledOrder: false
+    },
+    {
+      name: "Gita Pahlawan",
+      email: "gita.pahlawan@example.com",
+      weightKg: 76.5,
+      tier: "Pahlawan Lingkungan (76.5 kg)",
+      hasCancelledOrder: false
+    },
+    {
+      name: "Bintang Legenda",
+      email: "bintang.legenda@example.com",
+      weightKg: 135.2,
+      tier: "Legenda Bumi (135.2 kg)",
+      hasCancelledOrder: true
+    }
+  ];
 
-async function bcryptHash(password) {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
+  for (const spec of customerSpecs) {
+    const user = await prisma.user.create({
+      data: {
+        name: spec.name,
+        email: spec.email,
+        passwordHash: customerHash,
+        role: "CUSTOMER",
+        phone: `0812${Math.floor(10000000 + Math.random() * 90000000)}`,
+        isVerified: true,
+        avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(spec.name)}`
+      }
+    });
+
+    // Set coordinates in Yogyakarta with a small random offset (0.5km to 5km)
+    const offsetLng = (Math.random() - 0.5) * 0.015;
+    const offsetLat = (Math.random() - 0.5) * 0.015;
+    await prisma.$executeRaw`
+      UPDATE "User"
+      SET location = ST_SetSRID(ST_MakePoint(${110.3695 + offsetLng}, ${-7.7956 + offsetLat}), 4326)::geography
+      WHERE id = ${user.id}
+    `;
+
+    // Seed Completed Orders
+    if (spec.weightKg > 0) {
+      const order = await prisma.order.create({
+        data: {
+          customerId: user.id,
+          collectorId: budi.id,
+          method: "DROPOFF",
+          status: "COMPLETED",
+          estimatedWeight: spec.weightKg,
+          actualWeight: spec.weightKg,
+          agreedPrice: 2000,
+          totalPrice: spec.weightKg * 2000,
+          createdAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
+          updatedAt: new Date(Date.now() - 86400000 * 2 + 3600000),
+          items: {
+            create: [
+              {
+                categoryId: paperCategory.id,
+                estimatedWeight: spec.weightKg,
+                actualWeight: spec.weightKg,
+                agreedPrice: 2000,
+                notes: "Setoran kertas kardus daur ulang"
+              }
+            ]
+          }
+        }
+      });
+
+      // Digital Receipt
+      await prisma.receipt.create({
+        data: {
+          orderId: order.id,
+          detailsJson: {
+            customer: user.id,
+            collector: budi.id,
+            total: spec.weightKg * 2000,
+            items: [
+              {
+                category: paperCategory.name,
+                estimatedWeight: spec.weightKg,
+                actualWeight: spec.weightKg,
+                agreedPrice: 2000,
+                total: spec.weightKg * 2000
+              }
+            ]
+          }
+        }
+      });
+    }
+
+    // Seed optional Cancelled Order
+    if (spec.hasCancelledOrder) {
+      await prisma.order.create({
+        data: {
+          customerId: user.id,
+          collectorId: null,
+          method: "PICKUP",
+          status: "CANCELLED",
+          estimatedWeight: 2.0,
+          createdAt: new Date(Date.now() - 3600000), // 1 hour ago
+          updatedAt: new Date(),
+          items: {
+            create: [
+              {
+                categoryId: plasticCategory.id,
+                estimatedWeight: 2.0,
+                notes: "Mencoba order jemput lalu batal"
+              }
+            ]
+          }
+        }
+      });
+    }
+  }
+
+  console.log("\nDatabase Seeder completed successfully!");
+  console.log("=========================================");
+  console.log(`- Created ${Object.keys(categoryMap).length} categories.`);
+  console.log(`- Created Admin: admin@rongsok.in / admin123`);
+  console.log(`- Created 2 Collectors (Budi & Eco) / collector123`);
+  console.log(`- Created 6 Customers (Rizky, Tegar, Arif, Dinda, Gita, Bintang) / customer123`);
+  console.log("=========================================");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("Error during database seed:", e);
     process.exit(1);
   })
   .finally(async () => {
