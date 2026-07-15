@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('../config/prisma');
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ status: 'error', message: 'Unauthorized, no token' });
@@ -9,6 +10,17 @@ const protect = (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    
+    // Verify user still exists in the database
+    const userExists = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true }
+    });
+    
+    if (!userExists) {
+      return res.status(401).json({ status: 'error', message: 'Unauthorized, user no longer exists' });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
