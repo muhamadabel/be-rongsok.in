@@ -125,6 +125,7 @@ const createOrder = async (req, res, next) => {
       collectors.forEach(c => {
         io.to(`collector:${c.userId}`).emit('new_order', {
           orderId: order.id,
+          createdAt: order.createdAt,
           category: categoryIds[0],
           categories: categoryIds,
           estWeight: totalEstimatedWeight,
