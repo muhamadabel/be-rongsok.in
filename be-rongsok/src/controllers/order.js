@@ -453,7 +453,8 @@ const getOrderDetails = async (req, res, next) => {
         category: true,
         items: {
           include: { category: true }
-        }
+        },
+        ratings: true
       }
     });
 
