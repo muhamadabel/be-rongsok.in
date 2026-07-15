@@ -38,7 +38,6 @@ rongsok-be-changes.patch
 # Agent / AI tooling (tidak perlu masuk repo)
 .agents/
 skills-lock.json
-captain-definition
 CHANGES_HANDOFF.md
 fe_agent_prompt.md
 
