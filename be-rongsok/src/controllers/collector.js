@@ -4,7 +4,9 @@ const { z } = require('zod');
 const profileSchema = z.object({
   shopName: z.string().min(3),
   description: z.string().optional(),
-  radiusKm: z.number().min(1).max(50),
+  // Pengepul tak lagi punya radius layanan (jangkauan unlimited) — kolomnya masih
+  // ada demi kompatibilitas data lama, tapi FE tak mengirimnya lagi.
+  radiusKm: z.number().min(1).max(50).optional(),
   isOpen: z.boolean().optional(),
   shopImageUrl: z.string().optional(),
   // Jam buka (teks bebas). Informatif saja — buka/tutup tetap manual via isOpen.

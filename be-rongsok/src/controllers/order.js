@@ -97,17 +97,18 @@ const createOrder = async (req, res, next) => {
         }];
       }
     } else {
-      // Broadcast (REBUTAN) ke SEMUA pengepul yang BUKA & dalam radius layanannya.
-      // Tidak lagi mewajibkan katalog kategori cocok — biar order selalu sampai ke
-      // pengepul terdekat yang buka; mereka bisa tolak kalau tak menerima kategori itu.
+      // Broadcast (REBUTAN) ke SEMUA pengepul yang BUKA — TANPA batas radius.
+      // Pengepul tidak lagi punya radius layanan: semua tawaran masuk ke antrean
+      // mereka, dan mereka bebas MENOLAK kalau kejauhan / kategori tak diterima.
+      // Diurutkan dari yang terdekat supaya pengepul sekitar melihat lebih dulu.
       collectors = await prisma.$queryRaw`
         SELECT cp.id, cp."userId"
         FROM "CollectorProfile" cp
         JOIN "User" u ON cp."userId" = u.id
         WHERE
           cp."isOpen" = true AND
-          u.location IS NOT NULL AND
-          ST_DWithin(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(data.lng)}, ${parseFloat(data.lat)}), 4326)::geography, cp."radiusKm" * 1000)
+          u.location IS NOT NULL
+        ORDER BY ST_Distance(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(data.lng)}, ${parseFloat(data.lat)}), 4326)::geography) ASC
       `;
     }
 
