@@ -1,32 +1,37 @@
 #!/bin/sh
 # entrypoint.sh for Rongsok.in API
-
-set -e
+#
+# PENTING: JANGAN `exit 1` kalau db push gagal. Dulu satu perubahan schema yang bikin
+# db push error langsung mematikan container -> CapRover crash-loop -> 502 total.
+# Sekarang db push best-effort: kalau gagal, server TETAP start dgn schema yang ada
+# supaya API tetap hidup (endpoint lama jalan), bukan seluruh backend mati.
 
 echo "=================================================="
 echo "      Rongsok.in API Docker Bootstrapping"
 echo "=================================================="
 
-# Wait for the PostgreSQL/PostGIS database to be ready
-echo "🚀 Connecting to database..."
-
-RETRIES=15
-until [ $RETRIES -eq 0 ] || npx prisma db push --accept-data-loss; do
-  echo "⏳ Prisma db push failed (database might not be ready yet). Retrying in 3 seconds... ($RETRIES retries left)"
-  RETRIES=$((RETRIES-1))
+echo "🚀 Sinkron schema (prisma db push, best-effort)..."
+RETRIES=10
+DB_OK=0
+while [ "$RETRIES" -gt 0 ]; do
+  if npx prisma db push --accept-data-loss; then
+    DB_OK=1
+    break
+  fi
+  RETRIES=$((RETRIES - 1))
+  echo "⏳ db push gagal (DB belum siap / perubahan schema bermasalah). Sisa retry: $RETRIES"
   sleep 3
 done
 
-if [ $RETRIES -eq 0 ]; then
-  echo "❌ Error: Could not connect to database or apply migrations after several retries. Exiting."
-  exit 1
+if [ "$DB_OK" -eq 1 ]; then
+  echo "✅ Schema tersinkron."
+else
+  echo "⚠️ db push tidak berhasil — LANJUT start server pakai schema yang ada (hindari downtime 502)."
 fi
 
-echo "✅ Database is ready and migrations/schema are pushed successfully!"
+# Seeder best-effort — jangan pernah menjatuhkan container.
+echo "🌱 Menjalankan seeder (opsional)..."
+node prisma/seed.js || echo "⚠️ Seeding dilewati / DB sudah berisi data."
 
-# (Optional) Seed the database if needed
-echo "🌱 Running database seeder..."
-node prisma/seed.js || echo "⚠️ Seeding skipped or database already has data."
-
-echo "🚀 Starting Rongsok.in API Server..."
+echo "🚀 Menjalankan Rongsok.in API Server..."
 exec npm start
