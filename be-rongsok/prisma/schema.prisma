@@ -48,6 +48,8 @@ generator client {
    ktpName       String?
    ktpUrl        String?
    isVerified    Boolean  @default(false)
+   resetPasswordToken  String?
+   resetPasswordExpires DateTime?
    createdAt     DateTime @default(now())
    collectorProfile CollectorProfile?
    orders        Order[]  @relation("CustomerOrders")
