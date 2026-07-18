@@ -19,11 +19,14 @@ generator client {
  enum OrderStatus {
    PENDING
    CONFIRMED
-   ON_THE_WAY
    IN_PROGRESS
    AWAITING_CONFIRMATION
    COMPLETED
    CANCELLED
+   // Ditaruh DI AKHIR (bukan tengah) supaya `prisma db push` cukup ALTER TYPE ADD
+   // VALUE (append aman) & tak perlu rekreasi enum yang bisa gagal/crash saat deploy.
+   // Urutan enum tak dipakai logika app (alur status pakai string eksplisit).
+   ON_THE_WAY
  }
 
  enum OrderMethod {
