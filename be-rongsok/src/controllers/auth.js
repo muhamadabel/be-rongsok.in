@@ -1,6 +1,8 @@
 const prisma = require('../config/prisma');
 const { hashPassword, comparePassword, generateToken } = require('../utils/auth');
 const { z } = require('zod');
+const crypto = require('crypto');
+const { sendEmail } = require('../utils/email');
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -220,4 +222,94 @@ const updateMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, me, updateMe };
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string(),
+  password: z.string().min(8),
+});
+
+const forgotPassword = async (req, res, next) => {
+  try {
+    const data = forgotPasswordSchema.parse(req.body);
+    const user = await prisma.user.findUnique({ where: { email: data.email } });
+
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'Email tidak ditemukan.' });
+    }
+
+    const token = crypto.randomBytes(20).toString('hex');
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 menit
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: token,
+        resetPasswordExpires: expires,
+      },
+    });
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+    const html = `
+      <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #111827; font-size: 20px; font-weight: 800; margin-bottom: 12px;">Atur Ulang Kata Sandi Rongsok.in</h2>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">Halo,</p>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">Kami menerima permintaan untuk mengatur ulang kata sandi akun Rongsok.in Anda. Silakan klik tombol di bawah ini untuk melanjutkan:</p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${resetUrl}" style="background-color: #10B981; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block;">Atur Ulang Kata Sandi</a>
+        </div>
+        <p style="color: #6b7280; font-size: 12px; line-height: 1.6; margin-top: 24px;">Tautan ini hanya berlaku selama 15 menit. Jika Anda tidak merasa melakukan permintaan ini, silakan abaikan email ini secara aman.</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="font-size: 11px; color: #9ca3af;">Tim Rongsok.in Marketplace</p>
+      </div>
+    `;
+
+    await sendEmail({ to: user.email, subject: 'Atur Ulang Kata Sandi Rongsok.in', html });
+
+    res.status(200).json({ status: 'success', message: 'Tautan pemulihan kata sandi telah dikirim ke email.' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(422).json({ status: 'error', message: 'Validation failed', errors: error.errors });
+    }
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const data = resetPasswordSchema.parse(req.body);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        resetPasswordToken: data.token,
+        resetPasswordExpires: { gte: new Date() },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ status: 'error', message: 'Tautan tidak valid atau telah kedaluwarsa.' });
+    }
+
+    const hashedPassword = await hashPassword(data.password);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+      },
+    });
+
+    res.status(200).json({ status: 'success', message: 'Kata sandi berhasil diperbarui.' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(422).json({ status: 'error', message: 'Validation failed', errors: error.errors });
+    }
+    next(error);
+  }
+};
+
+module.exports = { register, login, me, updateMe, forgotPassword, resetPassword };
