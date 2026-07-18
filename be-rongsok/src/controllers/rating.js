@@ -54,7 +54,7 @@ const getUserRatings = async (req, res, next) => {
     const { userId } = req.params;
     const ratings = await prisma.rating.findMany({
       where: { rateeId: userId },
-      include: { rater: { select: { name: true } } },
+      include: { rater: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { createdAt: 'desc' }
     });
     res.status(200).json({ status: 'success', data: ratings });

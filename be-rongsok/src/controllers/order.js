@@ -176,7 +176,7 @@ const updateStatus = async (req, res, next) => {
             where: {
               collectorId: req.user.id,
               status: {
-                in: ['CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION']
+                in: ['CONFIRMED', 'ON_THE_WAY', 'IN_PROGRESS', 'AWAITING_CONFIRMATION']
               }
             }
           });
@@ -196,8 +196,20 @@ const updateStatus = async (req, res, next) => {
         });
         break;
       
-      case 'arrive': // Pihak yang menuju lokasi (atau lawannya) menandai SUDAH SAMPAI
+      case 'depart': // Pihak yang menuju lokasi menandai "DALAM PERJALANAN" (mulai OTW)
         if (order.status !== 'CONFIRMED') {
+          return res.status(400).json({ status: 'error', message: 'Pesanan belum diterima / tidak bisa mulai perjalanan' });
+        }
+        if (order.customerId !== req.user.id && order.collectorId !== req.user.id) {
+          return res.status(403).json({ status: 'error', message: 'Anda bukan bagian dari pesanan ini' });
+        }
+        newStatus = 'ON_THE_WAY';
+        await prisma.order.update({ where: { id }, data: { status: newStatus } });
+        break;
+
+      case 'arrive': // Pihak yang menuju lokasi menandai SUDAH SAMPAI (siap timbang)
+        // Terima dari ON_THE_WAY (alur baru) maupun CONFIRMED (backward-compat).
+        if (order.status !== 'ON_THE_WAY' && order.status !== 'CONFIRMED') {
           return res.status(400).json({ status: 'error', message: 'Pesanan belum siap untuk ditandai sampai' });
         }
         if (order.customerId !== req.user.id && order.collectorId !== req.user.id) {
@@ -208,7 +220,7 @@ const updateStatus = async (req, res, next) => {
         break;
 
       case 'validate': // Collector submits actual weight & price per category
-        if (order.status !== 'CONFIRMED' && order.status !== 'IN_PROGRESS') {
+        if (!['CONFIRMED', 'ON_THE_WAY', 'IN_PROGRESS'].includes(order.status)) {
           return res.status(400).json({ message: 'Invalid state' });
         }
         
@@ -316,7 +328,7 @@ const updateStatus = async (req, res, next) => {
         });
 
       case 'cancel': // Customer (atau collector terkait) membatalkan order
-        if (!['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(order.status)) {
+        if (!['PENDING', 'CONFIRMED', 'ON_THE_WAY', 'IN_PROGRESS'].includes(order.status)) {
           return res.status(400).json({ status: 'error', message: 'Pesanan tidak bisa dibatalkan pada status ini' });
         }
         if (order.customerId !== req.user.id && order.collectorId !== req.user.id) {

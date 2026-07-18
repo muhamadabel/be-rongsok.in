@@ -19,6 +19,7 @@ generator client {
  enum OrderStatus {
    PENDING
    CONFIRMED
+   ON_THE_WAY
    IN_PROGRESS
    AWAITING_CONFIRMATION
    COMPLETED
