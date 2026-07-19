@@ -22,6 +22,7 @@ const search = async (req, res, next) => {
     const collectors = await prisma.$queryRaw`
       SELECT
         cp.id,
+        cp."userId",
         cp."shopName",
         cp.description,
         cp."shopImageUrl",
@@ -41,7 +42,7 @@ const search = async (req, res, next) => {
         ${categoryFilter}
         AND u.location IS NOT NULL
         AND ST_DWithin(u.location, ST_SetSRID(ST_MakePoint(${parseFloat(lng)}, ${parseFloat(lat)}), 4326)::geography, ${parseFloat(radius)} * 1000)
-      GROUP BY cp.id, u.id
+      GROUP BY cp.id, cp."userId", u.id
       ORDER BY cp."isPremium" DESC, distance ASC
     `;
 
