@@ -127,6 +127,11 @@ const createOrder = async (req, res, next) => {
         io.to(`collector:${c.userId}`).emit('new_order', {
           orderId: order.id,
           createdAt: order.createdAt,
+          // War (broadcast) = null; Forward (private, dipilih langsung dari lapak) =
+          // userId pengepul. Dulu field ini TAK dikirim sama sekali → FE selalu
+          // menganggap order baru sebagai War sampai polling REST 8 detik berikutnya
+          // "membetulkan" — ada jendela order forward nongol salah panel.
+          collectorId: data.collectorId || null,
           category: categoryIds[0],
           categories: categoryIds,
           estWeight: totalEstimatedWeight,
