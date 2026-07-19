@@ -15,6 +15,7 @@ const ratingRoutes = require('./routes/rating');
 const adminRoutes = require('./routes/admin');
 const uploadRoutes = require('./routes/upload');
 const { errorHandler } = require('./middlewares/error');
+const prisma = require('./config/prisma');
 
 const app = express();
 const server = http.createServer(app);
@@ -76,6 +77,30 @@ app.use('/api/v1/upload', uploadRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);
+
+// Auto-batalkan order "ON_THE_WAY" yang lebih dari 3 jam tak kunjung ditandai
+// sampai (arrive). Disapu berkala (bukan lazy-on-read) supaya tetap kena
+// walau tak ada pihak yang membuka halaman order tsb.
+const ON_THE_WAY_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 jam
+const AUTO_CANCEL_SWEEP_MS = 5 * 60 * 1000; // cek tiap 5 menit
+
+async function sweepStaleOnTheWayOrders() {
+  try {
+    const staleBefore = new Date(Date.now() - ON_THE_WAY_TIMEOUT_MS);
+    const stale = await prisma.order.findMany({
+      where: { status: 'ON_THE_WAY', updatedAt: { lt: staleBefore } },
+      select: { id: true, customerId: true, collectorId: true }
+    });
+    for (const o of stale) {
+      await prisma.order.update({ where: { id: o.id }, data: { status: 'CANCELLED' } });
+      io.to(`order:${o.id}`).emit('order_status_update', { orderId: o.id, status: 'CANCELLED' });
+      console.log(`⏰ Auto-batalkan order ${o.id} — lebih dari 3 jam dalam perjalanan tanpa "sudah sampai".`);
+    }
+  } catch (err) {
+    console.error('Gagal menyapu order ON_THE_WAY basi:', err.message);
+  }
+}
+setInterval(sweepStaleOnTheWayOrders, AUTO_CANCEL_SWEEP_MS);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

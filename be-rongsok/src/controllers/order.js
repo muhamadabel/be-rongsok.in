@@ -189,22 +189,13 @@ const updateStatus = async (req, res, next) => {
           }
         }
 
-        newStatus = 'CONFIRMED';
+        // Diterima langsung jadi "Dalam Perjalanan" — tak perlu klik terpisah lagi
+        // (dulu ada action 'depart' manual; sekarang otomatis begitu diterima).
+        newStatus = 'ON_THE_WAY';
         await prisma.order.update({
           where: { id },
           data: { status: newStatus, collectorId: req.user.id }
         });
-        break;
-      
-      case 'depart': // Pihak yang menuju lokasi menandai "DALAM PERJALANAN" (mulai OTW)
-        if (order.status !== 'CONFIRMED') {
-          return res.status(400).json({ status: 'error', message: 'Pesanan belum diterima / tidak bisa mulai perjalanan' });
-        }
-        if (order.customerId !== req.user.id && order.collectorId !== req.user.id) {
-          return res.status(403).json({ status: 'error', message: 'Anda bukan bagian dari pesanan ini' });
-        }
-        newStatus = 'ON_THE_WAY';
-        await prisma.order.update({ where: { id }, data: { status: newStatus } });
         break;
 
       case 'arrive': // Pihak yang menuju lokasi menandai SUDAH SAMPAI (siap timbang)
@@ -219,8 +210,10 @@ const updateStatus = async (req, res, next) => {
         await prisma.order.update({ where: { id }, data: { status: newStatus } });
         break;
 
-      case 'validate': // Collector submits actual weight & price per category
-        if (!['CONFIRMED', 'ON_THE_WAY', 'IN_PROGRESS'].includes(order.status)) {
+      case 'validate': // Collector submits actual weight & price per category.
+        // Hanya boleh SETELAH ditandai sampai (IN_PROGRESS) — form timbangan tak
+        // boleh dibuka selagi masih dalam perjalanan.
+        if (order.status !== 'IN_PROGRESS') {
           return res.status(400).json({ message: 'Invalid state' });
         }
         
@@ -371,11 +364,23 @@ const getOrders = async (req, res, next) => {
 
     const where = {};
     if (role === 'collector' && status === 'PENDING') {
-      // Antrean broadcast: order PENDING yang ditawarkan ke collector ini & belum
-      // diambil siapa pun. Relasi disimpan di tabel OrderCollector (status 'notified').
+      // Antrean PENDING pengepul ini terdiri dari DUA jenis, dibedakan via collectorId:
+      // (1) FORWARD/private — customer memilih lapak ini langsung (collectorId sudah
+      //     terisi SEJAK dibuat, meski status masih PENDING). Bukan war, cuma utk dia.
+      // (2) WAR/broadcast — order belum ber-collector, ditawarkan ke banyak pengepul
+      //     sekaligus (rebutan first-come-first-served) via tabel OrderCollector.
+      // FE membedakan war/forward dari field collectorId (null = war, terisi = forward).
       where.status = 'PENDING';
-      where.collectorId = null;
-      where.orderCollectors = { some: { collectorId: req.user.id, status: 'notified' } };
+      where.OR = [
+        {
+          collectorId: req.user.id,
+          NOT: { orderCollectors: { some: { collectorId: req.user.id, status: 'rejected' } } }
+        },
+        {
+          collectorId: null,
+          orderCollectors: { some: { collectorId: req.user.id, status: 'notified' } }
+        }
+      ];
     } else if (role === 'collector') {
       where.collectorId = req.user.id;
       if (status) where.status = status;
