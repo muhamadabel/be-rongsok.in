@@ -82,7 +82,12 @@ app.use(errorHandler);
 // sampai (arrive). Disapu berkala (bukan lazy-on-read) supaya tetap kena
 // walau tak ada pihak yang membuka halaman order tsb.
 const ON_THE_WAY_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 jam
-const AUTO_CANCEL_SWEEP_MS = 5 * 60 * 1000; // cek tiap 5 menit
+// Tawaran WAR (broadcast) berlaku 15 menit sejak dibuat — sama dengan countdown
+// yang ditampilkan FE di dasbor pengepul (OFFER_TTL_MS). Dulu cuma efek visual:
+// order disaring dari tampilan pengepul tapi baris di DB tetap PENDING selamanya,
+// jadi customer nunggu tanpa batas. Sekarang beneran di-CANCELLED di server.
+const WAR_OFFER_TIMEOUT_MS = 15 * 60 * 1000; // 15 menit
+const AUTO_CANCEL_SWEEP_MS = 60 * 1000; // cek tiap 1 menit
 
 async function sweepStaleOnTheWayOrders() {
   try {
@@ -100,7 +105,40 @@ async function sweepStaleOnTheWayOrders() {
     console.error('Gagal menyapu order ON_THE_WAY basi:', err.message);
   }
 }
-setInterval(sweepStaleOnTheWayOrders, AUTO_CANCEL_SWEEP_MS);
+
+async function sweepExpiredWarOrders() {
+  try {
+    const staleBefore = new Date(Date.now() - WAR_OFFER_TIMEOUT_MS);
+    // War/broadcast = PENDING & belum ber-collector (collectorId null). Order
+    // "forward" (private, collectorId sudah terisi) TIDAK kena — customer sengaja
+    // menunggu satu lapak tertentu, jadi tak ada batas 15 menit.
+    const stale = await prisma.order.findMany({
+      where: { status: 'PENDING', collectorId: null, createdAt: { lt: staleBefore } },
+      select: { id: true }
+    });
+    for (const o of stale) {
+      const notified = await prisma.orderCollector.findMany({
+        where: { orderId: o.id },
+        select: { collectorId: true }
+      });
+      await prisma.order.update({ where: { id: o.id }, data: { status: 'CANCELLED' } });
+      io.to(`order:${o.id}`).emit('order_status_update', { orderId: o.id, status: 'CANCELLED' });
+      // Bersihkan antrean SEMUA pengepul yang sempat dinotifikasi — sama seperti
+      // saat accept/cancel manual — supaya hilang instan meski jam client beda.
+      notified.forEach((c) => {
+        io.to(`collector:${c.collectorId}`).emit('order_taken', { orderId: o.id });
+      });
+      console.log(`⏰ Auto-batalkan order ${o.id} — 15 menit war/broadcast tanpa pengepul yang menerima.`);
+    }
+  } catch (err) {
+    console.error('Gagal menyapu order war basi:', err.message);
+  }
+}
+
+setInterval(() => {
+  sweepStaleOnTheWayOrders();
+  sweepExpiredWarOrders();
+}, AUTO_CANCEL_SWEEP_MS);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
